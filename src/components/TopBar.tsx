@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
+import { Icon, StarGlyph } from './Icon'
 
 export function StarCount({ stars, bump }: { stars: number; bump?: number }) {
   return (
-    <div className="star-count" key={bump} aria-label={`${stars} כוכבים`}>
-      <span className="star-icon">⭐</span>
+    <div className="chip chip-stars" key={bump} aria-label={`${stars} כוכבים`}>
+      <StarGlyph />
       <span>{stars}</span>
     </div>
   )
@@ -14,7 +15,7 @@ export function TopBar({ onBack, stars, bump, children }: { onBack?: () => void;
     <header className="topbar">
       {onBack ? (
         <button className="icon-btn" onClick={onBack} aria-label="חזרה">
-          →
+          <Icon name="back" size={28} />
         </button>
       ) : (
         <span />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Store } from '../App'
 import { TopBar } from '../components/TopBar'
+import { Icon } from '../components/Icon'
 import { Sparkles } from '../components/Sparkles'
 import { LETTERS, LETTER_BY_ID, type LetterId } from '../content/letters'
 import { playPhrase, playSound, playWord, stop } from '../audio/audio'
@@ -66,7 +67,7 @@ export function LetterCard({ store, id }: { store: Store; id: string }) {
           </div>
 
           <button className="keyword" onClick={tap(() => playWord(letter.keyword.word))} dir="ltr" lang="en">
-            <span className="keyword-emoji">{letter.keyword.emoji}</span>
+            <span className="keyword-emoji" aria-hidden>{letter.keyword.emoji}</span>
             <span className="keyword-word">
               <b>{letter.keyword.word[0]}</b>
               {letter.keyword.word.slice(1)}
@@ -75,26 +76,26 @@ export function LetterCard({ store, id }: { store: Store; id: string }) {
 
           <div className="sound-buttons">
             <button className="btn btn-primary" onClick={tap(() => playSound(letter))}>
-              🔊 הצליל
+              <Icon name="speaker" /> הצליל
             </button>
             <button className="btn btn-soft" onClick={tap(() => playPhrase(letter))} dir="ltr" lang="en">
-              ▶ {letter.upper} says {letter.sound}
+              <Icon name="play" size={20} /> {letter.upper} says {letter.sound}
             </button>
           </div>
           <p className="say-it">
-            🎤 עכשיו את! תגידי בקול: <bdi dir="ltr">{letter.sound}</bdi>
+            <Icon name="mic" size={20} /> תורך: אמרי בקול <bdi dir="ltr">{letter.sound}</bdi>
           </p>
         </div>
       </div>
 
       <nav className="card-nav">
         <button className="btn btn-nav" disabled={!prev} onClick={() => prev && go(`/letter/${prev.id}`)}>
-          <span aria-hidden>→</span>
+          <Icon name="back" />
           <span>הקודמת</span>
         </button>
         <button className="btn btn-nav" disabled={!next} onClick={() => next && go(`/letter/${next.id}`)}>
           <span>הבאה</span>
-          <span aria-hidden>←</span>
+          <Icon name="next" />
         </button>
       </nav>
     </main>

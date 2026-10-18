@@ -1,8 +1,15 @@
 // Mimi, the app's own bunny (original artwork, no licensed characters).
+// Drawn as a bold-outline avatar with headphones: she's the listening coach.
 type Props = { size?: number; mood?: 'happy' | 'cheer' | 'think'; className?: string }
+
+const INK = '#1c1846'
+const FUR = '#f5f3ff'
+const INNER = '#a78bfa'
+const GEAR = '#19d3b4'
 
 export function Mascot({ size = 120, mood = 'happy', className }: Props) {
   const cheer = mood === 'cheer'
+  const think = mood === 'think'
   return (
     <svg
       className={`mascot ${cheer ? 'mascot-cheer' : ''} ${className ?? ''}`}
@@ -10,49 +17,57 @@ export function Mascot({ size = 120, mood = 'happy', className }: Props) {
       height={size}
       viewBox="0 0 120 120"
       role="img"
-      aria-label="מימי הארנבונה"
+      aria-label="מימי"
     >
-      {/* ears */}
-      <g className="mascot-ears">
-        <ellipse cx="42" cy="28" rx="11" ry="26" fill="#fff" stroke="#e8c6d6" strokeWidth="2" transform="rotate(-12 42 28)" />
-        <ellipse cx="42" cy="30" rx="5.5" ry="18" fill="#ffc4d6" transform="rotate(-12 42 30)" />
-        <ellipse cx="78" cy="28" rx="11" ry="26" fill="#fff" stroke="#e8c6d6" strokeWidth="2" transform="rotate(12 78 28)" />
-        <ellipse cx="78" cy="30" rx="5.5" ry="18" fill="#ffc4d6" transform="rotate(12 78 30)" />
+      {/* ears: one up, one folded, for some attitude */}
+      <g stroke={INK} strokeWidth="3.5" strokeLinejoin="round">
+        <path d="M38 52 C30 30 30 10 40 6 C50 3 54 26 52 50 Z" fill={FUR} />
+        <path d="M68 50 C70 30 78 14 92 12 C102 12 98 26 84 34 C78 38 76 44 76 52 Z" fill={FUR} />
       </g>
-      {/* bow */}
-      <g transform="translate(84 46)">
-        <path d="M0 0 L-12 -8 L-12 8 Z" fill="#c9a7e8" />
-        <path d="M0 0 L12 -8 L12 8 Z" fill="#c9a7e8" />
-        <circle r="4" fill="#b48ddb" />
-      </g>
+      <path d="M42 46 C37 30 38 16 42 13 C46 12 48 28 47 45 Z" fill={INNER} />
+      <path d="M73 46 C75 34 81 22 90 18 C93 19 90 25 82 30 C77 34 75 40 75 46 Z" fill={INNER} />
+
+      {/* headphone band */}
+      <path d="M22 74 C22 42 98 42 98 74" fill="none" stroke={INK} strokeWidth="9" strokeLinecap="round" />
+      <path d="M22 74 C22 42 98 42 98 74" fill="none" stroke={GEAR} strokeWidth="4.5" strokeLinecap="round" />
+
       {/* head */}
-      <ellipse cx="60" cy="76" rx="38" ry="34" fill="#fff" stroke="#e8c6d6" strokeWidth="2" />
-      {/* cheeks */}
-      <ellipse cx="38" cy="86" rx="7" ry="4.5" fill="#ffb7c5" opacity="0.8" />
-      <ellipse cx="82" cy="86" rx="7" ry="4.5" fill="#ffb7c5" opacity="0.8" />
+      <path
+        d="M60 44 C86 44 100 60 100 80 C100 100 84 112 60 112 C36 112 20 100 20 80 C20 60 34 44 60 44 Z"
+        fill={FUR}
+        stroke={INK}
+        strokeWidth="3.5"
+      />
+
+      {/* ear cups */}
+      <rect x="11" y="66" width="17" height="28" rx="8" fill={GEAR} stroke={INK} strokeWidth="3.5" />
+      <rect x="92" y="66" width="17" height="28" rx="8" fill={GEAR} stroke={INK} strokeWidth="3.5" />
+
       {/* eyes */}
       {cheer ? (
-        <>
-          <path d="M40 74 q6 -7 12 0" stroke="#4a3b52" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-          <path d="M68 74 q6 -7 12 0" stroke="#4a3b52" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-        </>
+        <g stroke={INK} strokeWidth="4" fill="none" strokeLinecap="round">
+          <path d="M40 80 q6 -8 12 0" />
+          <path d="M68 80 q6 -8 12 0" />
+        </g>
       ) : (
-        <>
-          <ellipse cx="46" cy="73" rx="5" ry="6" fill="#4a3b52" />
-          <ellipse cx="74" cy="73" rx="5" ry="6" fill="#4a3b52" />
-          <circle cx="48" cy="70.5" r="1.8" fill="#fff" />
-          <circle cx="76" cy="70.5" r="1.8" fill="#fff" />
-        </>
+        <g>
+          <ellipse cx="46" cy="79" rx="5.5" ry="7" fill={INK} />
+          <ellipse cx="74" cy="79" rx="5.5" ry="7" fill={INK} />
+          <circle cx={think ? 46 : 48} cy={think ? 75 : 76} r="2" fill="#fff" />
+          <circle cx={think ? 74 : 76} cy={think ? 75 : 76} r="2" fill="#fff" />
+          {/* confident brows */}
+          <path d={think ? 'M39 68 l12 -2' : 'M40 69 q6 -3 12 0'} stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none" />
+          <path d={think ? 'M69 66 l12 2' : 'M68 69 q6 -3 12 0'} stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none" />
+        </g>
       )}
+
       {/* nose + mouth */}
-      <path d="M56 84 h8 l-4 4 z" fill="#ff8fab" />
-      <path
-        d={mood === 'think' ? 'M54 94 h12' : 'M53 92 q7 7 14 0'}
-        stroke="#4a3b52"
-        strokeWidth="2.5"
-        fill="none"
-        strokeLinecap="round"
-      />
+      <path d="M56.5 89 h7 l-3.5 3.5 z" fill="#ff5d8f" stroke="#ff5d8f" strokeWidth="1.5" strokeLinejoin="round" />
+      {cheer ? (
+        <path d="M51 96 q9 10 18 0 z" fill={INK} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+      ) : (
+        <path d={think ? 'M54 99 q4 -2 10 0' : 'M53 97 q7 6 14 0'} stroke={INK} strokeWidth="3" fill="none" strokeLinecap="round" />
+      )}
     </svg>
   )
 }
