@@ -8,10 +8,14 @@ import { CONFUSION_PAIRS, LETTERS, LETTER_BY_ID, SAME_SOUND, type LetterId } fro
 import { nextSticker } from '../content/stickers'
 import { Round, type Question } from '../engine/engine'
 import { levelOf, xpOf, XP_PER_STAR, XP_PER_STICKER } from '../engine/progress'
-import { chime, playContrast, playSound, stop } from '../audio/audio'
+import { chime, playContrast, playSound, sayHebrew, stop } from '../audio/audio'
 
 const ROUND_LENGTH = 10
 const PRAISE = ['בול!', 'מעולה!', 'בדיוק!', 'יש!', 'אלופה!', 'אש!']
+// Spoken praise only now and then (every 2nd-3rd right answer), so it stays special.
+const SPOKEN_PRAISE = ['kol-hakavod', 'meule', 'wow'] as const
+const praiseGap = () => 2 + Math.floor(Math.random() * 2)
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 type Feedback = { chosen: string; ok: boolean } | null
 
@@ -45,16 +49,39 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
   const [results, setResults] = useState<boolean[]>([])
   const [combo, setCombo] = useState(0)
   const [levelBefore] = useState(() => levelOf(xpOf(data)).level)
+  const praiseIn = useRef(praiseGap())
+  const praiseNext = useRef(Math.floor(Math.random() * SPOKEN_PRAISE.length))
+  const missedLast = useRef(false)
 
   const target = LETTER_BY_ID[q.target as LetterId]
 
-  // Play the sound for each new question.
+  // Play the sound for each new question: the round opens with "which sound do you hear?",
+  // and a question after a miss with "listen carefully".
   useEffect(() => {
-    const t = setTimeout(() => playSound(target), 450)
-    return () => clearTimeout(t)
-  }, [q, target])
+    let live = true
+    const intro = round.asked === 0 ? 'which-sound' : missedLast.current ? 'listen' : null
+    missedLast.current = false
+    const t = setTimeout(async () => {
+      if (intro) await sayHebrew(intro)
+      if (live) playSound(target)
+    }, 450)
+    return () => {
+      live = false
+      clearTimeout(t)
+    }
+  }, [q, target, round])
 
   useEffect(() => () => stop(), [])
+
+  // End of round: "you went up a level!" when she did, then "you got a new sticker!".
+  useEffect(() => {
+    if (!sticker) return
+    void (async () => {
+      if (levelOf(xpOf(data)).level > levelBefore) await sayHebrew('level-up')
+      await sayHebrew('new-sticker')
+    })()
+    // Once per round end; data is already updated with the new sticker here.
+  }, [sticker])
 
   const choose = async (id: string) => {
     if (busy || sticker) return
@@ -78,21 +105,32 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
       chime('yay')
       setPraise(PRAISE[Math.floor(Math.random() * PRAISE.length)])
       setBusy(true)
-      setTimeout(() => {
-        setBusy(false)
-        setFeedback(null)
-        setPraise('')
-        if (round.done) finish()
-        else {
-          setFirstTry(true)
-          setQ(round.next())
-        }
-      }, 1300)
+      let spoken: Promise<void> = Promise.resolve()
+      if (--praiseIn.current <= 0 && !round.done) {
+        praiseIn.current = praiseGap()
+        const clip = SPOKEN_PRAISE[praiseNext.current++ % SPOKEN_PRAISE.length]
+        spoken = pause(250).then(() => sayHebrew(clip))
+      }
+      // The next question's sound waits for the praise to finish.
+      await Promise.all([spoken, pause(1300)])
+      setBusy(false)
+      setFeedback(null)
+      setPraise('')
+      if (round.done) finish()
+      else {
+        setFirstTry(true)
+        setQ(round.next())
+      }
     } else {
-      // No red "wrong": play both sounds side by side, then let her try again.
+      // No red "wrong": "almost! let's try again" (first miss only), then both sounds side by side.
       chime('soft')
-      setFirstTry(false)
       setBusy(true)
+      if (firstTry) {
+        missedLast.current = true
+        await pause(250)
+        await sayHebrew('almost')
+      }
+      setFirstTry(false)
       await playContrast(target, LETTER_BY_ID[id as LetterId], setFocus)
       setBusy(false)
       setFeedback(null)

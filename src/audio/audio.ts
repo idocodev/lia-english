@@ -26,7 +26,6 @@ function clipUrl(key: string): string | undefined {
 }
 
 let englishVoice: SpeechSynthesisVoice | undefined
-let hebrewVoice: SpeechSynthesisVoice | undefined
 
 function loadVoices() {
   if (!('speechSynthesis' in window)) return
@@ -37,7 +36,6 @@ function loadVoices() {
     en.find((v) => /en-us/i.test(v.lang) && /samantha|female|zira|google us/i.test(v.name)) ??
     en.find((v) => /en-us/i.test(v.lang)) ??
     en[0]
-  hebrewVoice = voices.find((v) => /^(he|iw)/i.test(v.lang))
 }
 
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -113,13 +111,12 @@ async function playFile(url: string): Promise<boolean> {
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-function speak(text: string, lang: 'en' | 'he' = 'en', rate = 0.8): Promise<void> {
+function speak(text: string, rate = 0.8): Promise<void> {
   return new Promise((resolve) => {
     if (!('speechSynthesis' in window)) return resolve()
     const u = new SpeechSynthesisUtterance(text)
-    u.lang = lang === 'en' ? 'en-US' : 'he-IL'
-    const voice = lang === 'en' ? englishVoice : hebrewVoice
-    if (voice) u.voice = voice
+    u.lang = 'en-US'
+    if (englishVoice) u.voice = englishVoice
     u.rate = rate
     u.pitch = 1.1
     u.onend = () => resolve()
@@ -134,7 +131,7 @@ function speak(text: string, lang: 'en' | 'he' = 'en', rate = 0.8): Promise<void
 async function sayEnglish(text: string, rate = 0.8): Promise<void> {
   const url = clipUrl(text)
   if (url && (await playFile(url))) return
-  return speak(text, 'en', rate)
+  return speak(text, rate)
 }
 
 /** The pure letter sound: /g/. */
@@ -142,7 +139,7 @@ export async function playSound(letter: Letter) {
   for (const url of [recordedUrl(letter, 'sound'), clipUrl(`sound:${letter.id}`)]) {
     if (url && (await playFile(url))) return
   }
-  return speak(letter.ttsSound, 'en', 0.7)
+  return speak(letter.ttsSound, 0.7)
 }
 
 /** "G says /g/, like goat." */
@@ -159,9 +156,22 @@ export async function playWord(word: string) {
   return sayEnglish(word)
 }
 
-/** Short Hebrew praise/instructions, only if the device has a Hebrew voice. */
-export async function sayHebrew(text: string) {
-  if (hebrewVoice) return speak(text, 'he', 1)
+/** Ido's recorded Hebrew feedback, in public/audio/he/<id>.mp3. */
+export const HEBREW_CLIPS = [
+  'kol-hakavod', // כל הכבוד!
+  'meule', // מעולה!
+  'wow', // וואו, איזה יופי!
+  'almost', // כמעט! בואי ננסה שוב
+  'listen', // תקשיבי טוב
+  'which-sound', // איזה צליל את שומעת?
+  'level-up', // עלית רמה!
+  'new-sticker', // קיבלת מדבקה חדשה!
+] as const
+export type HebrewClip = (typeof HEBREW_CLIPS)[number]
+
+/** A Hebrew feedback clip. Files only: the device's Hebrew speech voice is never used. */
+export async function sayHebrew(id: HebrewClip) {
+  await playFile(`${base}audio/he/${id}.mp3`)
 }
 
 /** "This is /g/, and this is /e/" - used after a mix-up. */

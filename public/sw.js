@@ -1,12 +1,12 @@
 // Minimal offline support: network-first for pages, cache-first for assets.
-// The voice clips (audio/en/manifest.json, from scripts/gen-audio.py) are precached so speech works offline.
+// The voice clips (audio/manifest.json, from scripts/gen-audio.py) are precached so speech works offline.
 const CACHE = 'lia-english-v4'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (c) => {
       await c.addAll(['./', './manifest.webmanifest', './icon.svg'])
-      const clips = await fetch('./audio/en/manifest.json').then((r) => r.json())
+      const clips = await fetch('./audio/manifest.json').then((r) => r.json())
       await c.addAll(clips.map((f) => './' + f))
     }),
   )

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { LETTERS } from '../content/letters'
 import CLIPS from './clips.gen.json'
-import PRECACHE from '../../public/audio/en/manifest.json'
+import PRECACHE from '../../public/audio/manifest.json'
+import { HEBREW_CLIPS } from './audio'
 
 const clips = CLIPS as Record<string, string>
-const onDisk = new Set(Object.keys(import.meta.glob('../../public/audio/en/*.mp3')).map((p) => p.replace('../../public/', '')))
+const onDisk = new Set(Object.keys(import.meta.glob('../../public/audio/**/*.mp3')).map((p) => p.replace('../../public/', '')))
 
 describe('pre-generated clips', () => {
   it('cover every English phrase and word the app speaks (run scripts/gen-audio.py after adding letters)', () => {
@@ -15,6 +16,10 @@ describe('pre-generated clips', () => {
   it('point at files that exist and are all precached for offline use', () => {
     const files = Object.values(clips)
     expect(files.filter((f) => !onDisk.has(f))).toEqual([])
-    expect(new Set(PRECACHE)).toEqual(new Set(files))
+    expect(new Set(PRECACHE)).toEqual(onDisk)
+  })
+
+  it('include every Hebrew feedback clip', () => {
+    expect(HEBREW_CLIPS.filter((id) => !onDisk.has(`audio/he/${id}.mp3`))).toEqual([])
   })
 })

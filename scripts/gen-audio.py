@@ -3,8 +3,11 @@
 
 Reads the letters from src/content/letters.ts and writes small mono mp3s to
 public/audio/en/, plus two manifests:
-  - src/audio/clips.gen.json      what audio.ts plays (spoken text -> file)
-  - public/audio/en/manifest.json what the service worker precaches
+  - src/audio/clips.gen.json    what audio.ts plays (spoken text -> file)
+  - public/audio/manifest.json  every mp3 under public/audio, for the service worker to precache
+
+Recorded clips (Ido's, e.g. ElevenLabs) go in with the same trim and loudness:
+  python scripts/gen-audio.py --clip in.mp3 public/audio/he/kol-hakavod.mp3
 
 Run it after adding letters or words (not run in CI), then bump CACHE in public/sw.js
 so installed copies fetch the new files:
@@ -22,7 +25,6 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 import imageio_ffmpeg
-from kokoro_onnx import Kokoro
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public/audio/en"
@@ -206,7 +208,31 @@ def write_mp3(x, sr, path):
                         "-codec:a", "libmp3lame", "-b:a", "48k", str(path)], check=True)
 
 
+def write_manifest():
+    pub = ROOT / "public"
+    files = sorted(str(f.relative_to(pub)) for f in (pub / "audio").rglob("*.mp3"))
+    (pub / "audio/manifest.json").write_text(json.dumps(files, indent=1) + "\n")
+    size = sum((pub / f).stat().st_size for f in files)
+    print(f"manifest: {len(files)} files, {size / 1024:.0f} KB")
+
+
+def import_clip(src, dest):
+    """A recorded clip: trimmed, loudness-matched to the Kokoro clips, small mono mp3."""
+    with tempfile.NamedTemporaryFile(suffix=".wav") as t:
+        subprocess.run([FF, "-y", "-loglevel", "error", "-i", src, "-ac", "1", t.name], check=True)
+        x, sr = sf.read(t.name)
+    Path(dest).parent.mkdir(parents=True, exist_ok=True)
+    write_mp3(normalize(fade(trim(x, sr), sr, 0.005, 0.03)), sr, dest)
+    print(f"{dest}: {len(trim(x, sr)) / sr:.2f} s")
+    write_manifest()
+
+
 def main():
+    if "--clip" in sys.argv:
+        i = sys.argv.index("--clip")
+        return import_clip(sys.argv[i + 1], sys.argv[i + 2])
+    from kokoro_onnx import Kokoro
+
     preview = "--preview" in sys.argv
     k = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
     OUT.mkdir(parents=True, exist_ok=True)
@@ -265,10 +291,8 @@ def main():
             clips[f"sound:{l['id']}"] = f"audio/en/{f}"
 
     CLIPS_JSON.write_text(json.dumps(clips, indent=1, ensure_ascii=False) + "\n")
-    files = sorted(set(clips.values()))
-    (OUT / "manifest.json").write_text(json.dumps(files, indent=1) + "\n")
-    size = sum((ROOT / "public" / f).stat().st_size for f in files)
-    print(f"{len(clips)} clips, {len(files)} files, {size / 1024:.0f} KB")
+    print(f"{len(clips)} clips")
+    write_manifest()
 
 
 if __name__ == "__main__":
