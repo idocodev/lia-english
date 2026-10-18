@@ -1,9 +1,11 @@
 // Audio seam: every sound in the app goes through this module.
-// A recorded file (public/audio/...) always wins; the browser's speech engine is the fallback.
+// Order of preference: a recorded file (public/audio/...), then a pre-generated Kokoro clip
+// (public/audio/en/, voice af_heart, made by scripts/gen-audio.py), then the browser's speech engine.
 // To use recordings, add files and set `audio` on a letter in content/letters.ts,
 // or drop files named by convention (see recordedUrl) and list them in RECORDED.
 
 import type { Letter } from '../content/letters'
+import CLIPS from './clips.gen.json'
 
 /** Ids of letters that have recordings by convention: audio/<id>.mp3 and audio/<id>-phrase.mp3. */
 const RECORDED = new Set<string>([])
@@ -15,6 +17,12 @@ function recordedUrl(letter: Letter, kind: 'sound' | 'phrase'): string | undefin
   if (explicit) return `${base}audio/${explicit}`
   if (RECORDED.has(letter.id)) return `${base}audio/${letter.id}${kind === 'phrase' ? '-phrase' : ''}.mp3`
   return undefined
+}
+
+/** Pre-generated clip for an English text ("G says", "goat") or a letter sound ("sound:g"). */
+function clipUrl(key: string): string | undefined {
+  const file = (CLIPS as Record<string, string>)[key]
+  return file ? `${base}${file}` : undefined
 }
 
 let englishVoice: SpeechSynthesisVoice | undefined
@@ -37,22 +45,73 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   speechSynthesis.addEventListener?.('voiceschanged', loadVoices)
 }
 
-let current: HTMLAudioElement | undefined
+// Files play through Web Audio: once a tap has woken the context, clips can follow each other
+// without a tap of their own (iOS would refuse a new <audio> started after an await).
+let ctx: AudioContext | undefined
+function audioCtx(): AudioContext | undefined {
+  try {
+    ctx ??= new AudioContext()
+  } catch {
+    // No Web Audio: files are skipped and speech takes over.
+  }
+  return ctx
+}
+
+if (typeof window !== 'undefined') {
+  for (const ev of ['pointerdown', 'keydown']) {
+    window.addEventListener(ev, () => void audioCtx()?.resume(), { capture: true })
+  }
+}
+
+const buffers = new Map<string, Promise<AudioBuffer | undefined>>()
+function load(c: AudioContext, url: string) {
+  let p = buffers.get(url)
+  if (!p) {
+    p = fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.statusText))))
+      .then((b) => c.decodeAudioData(b))
+      .catch(() => {
+        buffers.delete(url)
+        return undefined
+      })
+    buffers.set(url, p)
+  }
+  return p
+}
+
+let current: AudioBufferSourceNode | undefined
 
 export function stop() {
-  current?.pause()
+  try {
+    current?.stop()
+  } catch {
+    // Already stopped.
+  }
   if ('speechSynthesis' in window) speechSynthesis.cancel()
 }
 
-function playFile(url: string): Promise<void> {
+/** Plays a file; resolves false if it could not be played (no tap yet, missing, offline and uncached). */
+async function playFile(url: string): Promise<boolean> {
+  const c = audioCtx()
+  if (!c) return false
+  if (c.state !== 'running') {
+    // resume() never settles before the first tap in some browsers: don't wait on it for long.
+    await Promise.race([c.resume().catch(() => {}), pause(300)])
+    if ((c.state as AudioContextState) !== 'running') return false
+  }
+  const buffer = await load(c, url)
+  if (!buffer) return false
   return new Promise((resolve) => {
-    const a = new Audio(url)
-    current = a
-    a.onended = () => resolve()
-    a.onerror = () => resolve()
-    a.play().catch(() => resolve())
+    const src = c.createBufferSource()
+    src.buffer = buffer
+    src.connect(c.destination)
+    src.onended = () => resolve(true)
+    current = src
+    src.start()
   })
 }
+
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 function speak(text: string, lang: 'en' | 'he' = 'en', rate = 0.8): Promise<void> {
   return new Promise((resolve) => {
@@ -71,26 +130,33 @@ function speak(text: string, lang: 'en' | 'he' = 'en', rate = 0.8): Promise<void
   })
 }
 
-const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
+/** English text: its pre-generated clip when there is one, else the speech engine. */
+async function sayEnglish(text: string, rate = 0.8): Promise<void> {
+  const url = clipUrl(text)
+  if (url && (await playFile(url))) return
+  return speak(text, 'en', rate)
+}
 
 /** The pure letter sound: /g/. */
 export async function playSound(letter: Letter) {
-  const url = recordedUrl(letter, 'sound')
-  return url ? playFile(url) : speak(letter.ttsSound, 'en', 0.7)
+  for (const url of [recordedUrl(letter, 'sound'), clipUrl(`sound:${letter.id}`)]) {
+    if (url && (await playFile(url))) return
+  }
+  return speak(letter.ttsSound, 'en', 0.7)
 }
 
 /** "G says /g/, like goat." */
 export async function playPhrase(letter: Letter) {
   const url = recordedUrl(letter, 'phrase')
-  if (url) return playFile(url)
-  await speak(`${letter.upper} says`, 'en')
+  if (url && (await playFile(url))) return
+  await sayEnglish(`${letter.upper} says`)
   await playSound(letter)
   await pause(150)
-  await speak(`like ${letter.keyword.word}`, 'en')
+  await sayEnglish(`like ${letter.keyword.word}`)
 }
 
 export async function playWord(word: string) {
-  return speak(word, 'en', 0.8)
+  return sayEnglish(word)
 }
 
 /** Short Hebrew praise/instructions, only if the device has a Hebrew voice. */
@@ -102,30 +168,30 @@ export async function sayHebrew(text: string) {
 export async function playContrast(a: Letter, b: Letter, onFocus: (id: string) => void) {
   // Each letter stays highlighted for at least a moment, even when speech is unavailable.
   onFocus(a.id)
-  await Promise.all([speak('This is', 'en').then(() => playSound(a)), pause(1100)])
+  await Promise.all([sayEnglish('This is').then(() => playSound(a)), pause(1100)])
   await pause(300)
   onFocus(b.id)
-  await Promise.all([speak('and this is', 'en').then(() => playSound(b)), pause(1100)])
+  await Promise.all([sayEnglish('and this is').then(() => playSound(b)), pause(1100)])
   await pause(200)
   onFocus('')
 }
 
 // Tiny synthesized chimes for feedback (no files needed).
-let ctx: AudioContext | undefined
 export function chime(kind: 'yay' | 'soft') {
   try {
-    ctx ??= new AudioContext()
+    const ctx = audioCtx()
+    if (!ctx) return
     const notes = kind === 'yay' ? [784, 988, 1319] : [392, 330]
     notes.forEach((f, i) => {
-      const o = ctx!.createOscillator()
-      const g = ctx!.createGain()
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
       o.type = 'sine'
       o.frequency.value = f
-      const t = ctx!.currentTime + i * 0.09
+      const t = ctx.currentTime + i * 0.09
       g.gain.setValueAtTime(0.0001, t)
       g.gain.exponentialRampToValueAtTime(0.18, t + 0.02)
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
-      o.connect(g).connect(ctx!.destination)
+      o.connect(g).connect(ctx.destination)
       o.start(t)
       o.stop(t + 0.4)
     })
