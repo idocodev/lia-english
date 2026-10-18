@@ -35,69 +35,73 @@ export function LetterCard({ store, id }: { store: Store; id: string }) {
   }
 
   return (
-    <main className="screen card-screen">
+    <main className="screen inner card-screen">
       <TopBar onBack={() => go('/letters')} stars={data.stars}>
         <span className="card-count" dir="ltr">
           {idx + 1} / {LETTERS.length}
         </span>
       </TopBar>
 
-      <div className="card-body">
-        <button className="big-letter" onClick={tap(() => playSound(letter))} lang="en" aria-label="השמעת הצליל">
-          {pulse > 0 && <Sparkles key={pulse} count={10} spread={90} />}
-          <span className="big-letter-inner">
-            <span className="upper">{letter.upper}</span>
-            <span className="lower">{letter.lower}</span>
-          </span>
-        </button>
-
-        <div className="card-side">
-          <div className="name-vs-sound">
-            <div className="nvs nvs-name">
-              <span className="nvs-label">השם</span>
-              <span className="nvs-value">{letter.nameHe}</span>
-            </div>
-            <div className="nvs nvs-sound">
-              <span className="nvs-label">הצליל</span>
-              <span className="nvs-value" dir="ltr" lang="en">
-                {letter.sound}
-              </span>
-              <span className="nvs-he">({letter.soundHe})</span>
-            </div>
-          </div>
-
-          <button className="keyword" onClick={tap(() => playWord(letter.keyword.word))} dir="ltr" lang="en">
-            <span className="keyword-emoji" aria-hidden>{letter.keyword.emoji}</span>
-            <span className="keyword-word">
-              <b>{letter.keyword.word[0]}</b>
-              {letter.keyword.word.slice(1)}
+      <div className="sheet">
+        <div className="card-body">
+          <button className="big-letter" onClick={tap(() => playSound(letter))} lang="en" aria-label="השמעת הצליל">
+            {pulse > 0 && <Sparkles key={pulse} count={10} spread={90} />}
+            <span className="big-letter-inner">
+              <span className="upper">{letter.upper}</span>
+              <span className="lower">{letter.lower}</span>
             </span>
           </button>
 
-          <div className="sound-buttons">
-            <button className="btn btn-primary" onClick={tap(() => playSound(letter))}>
-              <Icon name="speaker" /> הצליל
-            </button>
-            <button className="btn btn-soft" onClick={tap(() => playPhrase(letter))} dir="ltr" lang="en">
-              <Icon name="play" size={20} /> {letter.upper} says {letter.sound}
-            </button>
-          </div>
-          <p className="say-it">
-            <Icon name="mic" size={20} /> תורך: אמרי בקול <bdi dir="ltr">{letter.sound}</bdi>
-          </p>
-        </div>
-      </div>
+          <div className="card-side">
+            <div className="name-vs-sound">
+              <div className="nvs nvs-name">
+                <span className="nvs-label">השם</span>
+                <span className="nvs-value">{letter.nameHe}</span>
+              </div>
+              <div className="nvs nvs-sound">
+                <span className="nvs-label">הצליל</span>
+                <span className="nvs-value" dir="ltr" lang="en">
+                  {letter.sound}
+                </span>
+                <span className="nvs-he">({letter.soundHe})</span>
+              </div>
+            </div>
 
-      <nav className="card-nav">
-        <button className="btn btn-nav" disabled={!prev} onClick={() => prev && go(`/letter/${prev.id}`)}>
-          <Icon name="back" />
-          <span>הקודמת</span>
-        </button>
-        <button className="btn btn-nav" disabled={!next} onClick={() => next && go(`/letter/${next.id}`)}>
-          <span>הבאה</span>
-          <Icon name="next" />
-        </button>
-      </nav>
+            <button className="keyword" onClick={tap(() => playWord(letter.keyword.word))} dir="ltr" lang="en">
+              <span className="keyword-emoji" aria-hidden>
+                {letter.keyword.emoji}
+              </span>
+              <span className="keyword-word">
+                <b>{letter.keyword.word[0]}</b>
+                {letter.keyword.word.slice(1)}
+              </span>
+            </button>
+
+            <div className="sound-buttons">
+              <button className="btn btn-primary" onClick={tap(() => playSound(letter))}>
+                <Icon name="speaker" /> הצליל
+              </button>
+              <button className="btn btn-soft" onClick={tap(() => playPhrase(letter))} dir="ltr" lang="en">
+                <Icon name="play" size={20} /> {letter.upper} says {letter.sound}
+              </button>
+            </div>
+            <p className="say-it">
+              <Icon name="mic" size={20} /> תורך: אמרי בקול <bdi dir="ltr">{letter.sound}</bdi>
+            </p>
+          </div>
+        </div>
+
+        <nav className="card-nav">
+          <button className="btn btn-nav" disabled={!prev} onClick={() => prev && go(`/letter/${prev.id}`)}>
+            <Icon name="back" />
+            <span>הקודמת</span>
+          </button>
+          <button className="btn btn-nav" disabled={!next} onClick={() => next && go(`/letter/${next.id}`)}>
+            <span>הבאה</span>
+            <Icon name="next" />
+          </button>
+        </nav>
+      </div>
     </main>
   )
 }

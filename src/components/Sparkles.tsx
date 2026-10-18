@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 // Drawn as SVG so they look the same on every device (no font glyphs needed).
 const STAR = 'M12 0 C13 8 16 11 24 12 C16 13 13 16 12 24 C11 16 8 13 0 12 C8 11 11 8 12 0 Z'
 const DIAMOND = 'M12 2 L20 12 L12 22 L4 12 Z'
-const COLORS = ['#ffc83d', '#19d3b4', '#a78bfa', '#ff5d8f', '#ffffff']
+const COLORS = ['#ffc83d', '#22b0f0', '#9157f0', '#ff5d8f', '#ff8a1f']
 
 /** A short (<1s) burst of sparkles. Re-mount (change `key`) to replay. */
 export function Sparkles({ count = 14, spread = 110 }: { count?: number; spread?: number }) {

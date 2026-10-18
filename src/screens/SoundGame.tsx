@@ -149,7 +149,7 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
   }
 
   return (
-    <main className="screen game-screen">
+    <main className="screen inner game-screen">
       <TopBar onBack={() => go('/')} stars={data.stars} bump={data.stars}>
         <div className="dots" role="img" aria-label={`שאלה ${Math.min(results.length + 1, ROUND_LENGTH)} מתוך ${ROUND_LENGTH}`}>
           {Array.from({ length: ROUND_LENGTH }, (_, i) => (
@@ -158,55 +158,52 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
         </div>
       </TopBar>
 
-      <section className="game-prompt">
-        {combo >= 2 && (
-          <span className="combo" key={combo}>
-            <FlameGlyph size={20} /> {combo} ברצף
+      <div className="sheet">
+        <section className="game-prompt">
+          {combo >= 2 && (
+            <span className="combo" key={combo}>
+              <FlameGlyph size={20} /> {combo} ברצף
+            </span>
+          )}
+          <Mascot size={86} mood={feedback?.ok ? 'cheer' : feedback ? 'think' : 'happy'} />
+          <div className="bubble bubble-small">
+            {praise ? <b>{praise}</b> : feedback && !feedback.ok ? <span>כמעט! הקשיבי להבדל בין שני הצלילים</span> : <span>איזו אות עושה את הצליל ששמעת?</span>}
+          </div>
+        </section>
+
+        <button className="listen-btn" onClick={() => !busy && playSound(target)} aria-label="להשמיע שוב">
+          <span className="listen-icon">
+            <Icon name="speaker" size={30} />
           </span>
-        )}
-        <Mascot size={86} mood={feedback?.ok ? 'cheer' : feedback ? 'think' : 'happy'} />
-        <div className="bubble bubble-small">
-          {praise ? <b>{praise}</b> : feedback && !feedback.ok ? <span>כמעט! הקשיבי להבדל בין שני הצלילים</span> : <span>איזו אות עושה את הצליל ששמעת?</span>}
+          <span>להשמיע שוב</span>
+        </button>
+
+        <div className={`options options-${q.options.length}`} dir="ltr">
+          {q.options.map((id, i) => {
+            const l = LETTER_BY_ID[id as LetterId]
+            const state = feedback?.ok && id === q.target ? 'opt-right' : feedback && !feedback.ok && id === feedback.chosen ? 'opt-miss' : ''
+            return (
+              <button
+                key={`${q.target}-${id}-${round.asked}`}
+                className={`option opt-tone-${i % 3} ${state} ${focus === id ? 'opt-focus' : ''}`}
+                onClick={() => choose(id)}
+                lang="en"
+                aria-label={l.upper}
+              >
+                {state === 'opt-right' && (
+                  <>
+                    <Sparkles />
+                    <span className="xp-pop" dir="ltr">
+                      {firstTry ? `+${XP_PER_STAR} XP` : '✓'}
+                    </span>
+                  </>
+                )}
+                <span className="opt-lower">{l.lower}</span>
+                <span className="opt-upper">{l.upper}</span>
+              </button>
+            )
+          })}
         </div>
-      </section>
-
-      <button className="listen-btn" onClick={() => !busy && playSound(target)} aria-label="להשמיע שוב">
-        <span className="listen-icon">
-          <Icon name="speaker" size={30} />
-        </span>
-        <span>להשמיע שוב</span>
-      </button>
-
-      <div className={`options options-${q.options.length}`} dir="ltr">
-        {q.options.map((id) => {
-          const l = LETTER_BY_ID[id as LetterId]
-          const state =
-            feedback?.ok && id === q.target
-              ? 'opt-right'
-              : feedback && !feedback.ok && id === feedback.chosen
-                ? 'opt-miss'
-                : ''
-          return (
-            <button
-              key={`${q.target}-${id}-${round.asked}`}
-              className={`option ${state} ${focus === id ? 'opt-focus' : ''}`}
-              onClick={() => choose(id)}
-              lang="en"
-              aria-label={l.upper}
-            >
-              {state === 'opt-right' && (
-                <>
-                  <Sparkles />
-                  <span className="xp-pop" dir="ltr">
-                    {firstTry ? `+${XP_PER_STAR} XP` : '✓'}
-                  </span>
-                </>
-              )}
-              <span className="opt-lower">{l.lower}</span>
-              <span className="opt-upper">{l.upper}</span>
-            </button>
-          )
-        })}
       </div>
     </main>
   )

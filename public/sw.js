@@ -1,5 +1,5 @@
 // Minimal offline support: network-first for pages, cache-first for assets.
-const CACHE = 'lia-english-v2'
+const CACHE = 'lia-english-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './manifest.webmanifest', './icon.svg'])))

@@ -1,24 +1,18 @@
 // Mimi, the app's own bunny (original artwork, no licensed characters).
 // Drawn as a bold-outline avatar with headphones: she's the listening coach.
+// Bright palette: white fur, navy outline, sky-blue headphones.
 type Props = { size?: number; mood?: 'happy' | 'cheer' | 'think'; className?: string }
 
-const INK = '#1c1846'
-const FUR = '#f5f3ff'
-const INNER = '#a78bfa'
-const GEAR = '#19d3b4'
+const INK = '#1f2a5c'
+const FUR = '#ffffff'
+const INNER = '#ffb3cf'
+const GEAR = '#22b0f0'
 
 export function Mascot({ size = 120, mood = 'happy', className }: Props) {
   const cheer = mood === 'cheer'
   const think = mood === 'think'
   return (
-    <svg
-      className={`mascot ${cheer ? 'mascot-cheer' : ''} ${className ?? ''}`}
-      width={size}
-      height={size}
-      viewBox="0 0 120 120"
-      role="img"
-      aria-label="מימי"
-    >
+    <svg className={`mascot ${cheer ? 'mascot-cheer' : ''} ${className ?? ''}`} width={size} height={size} viewBox="0 0 120 120" role="img" aria-label="מימי">
       {/* ears: one up, one folded, for some attitude */}
       <g stroke={INK} strokeWidth="3.5" strokeLinejoin="round">
         <path d="M38 52 C30 30 30 10 40 6 C50 3 54 26 52 50 Z" fill={FUR} />
@@ -32,12 +26,7 @@ export function Mascot({ size = 120, mood = 'happy', className }: Props) {
       <path d="M22 74 C22 42 98 42 98 74" fill="none" stroke={GEAR} strokeWidth="4.5" strokeLinecap="round" />
 
       {/* head */}
-      <path
-        d="M60 44 C86 44 100 60 100 80 C100 100 84 112 60 112 C36 112 20 100 20 80 C20 60 34 44 60 44 Z"
-        fill={FUR}
-        stroke={INK}
-        strokeWidth="3.5"
-      />
+      <path d="M60 44 C86 44 100 60 100 80 C100 100 84 112 60 112 C36 112 20 100 20 80 C20 60 34 44 60 44 Z" fill={FUR} stroke={INK} strokeWidth="3.5" />
 
       {/* ear cups */}
       <rect x="11" y="66" width="17" height="28" rx="8" fill={GEAR} stroke={INK} strokeWidth="3.5" />

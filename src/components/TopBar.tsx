@@ -10,18 +10,34 @@ export function StarCount({ stars, bump }: { stars: number; bump?: number }) {
   )
 }
 
-export function TopBar({ onBack, stars, bump, children }: { onBack?: () => void; stars: number; bump?: number; children?: ReactNode }) {
+/** Purple header for inner screens: round white back button, stars, optional big title. */
+export function TopBar({
+  onBack,
+  stars,
+  bump,
+  title,
+  children,
+}: {
+  onBack?: () => void
+  stars: number
+  bump?: number
+  title?: ReactNode
+  children?: ReactNode
+}) {
   return (
     <header className="topbar">
-      {onBack ? (
-        <button className="icon-btn" onClick={onBack} aria-label="חזרה">
-          <Icon name="back" size={28} />
-        </button>
-      ) : (
-        <span />
-      )}
-      <div className="topbar-mid">{children}</div>
-      <StarCount stars={stars} bump={bump} />
+      <div className="topbar-row">
+        {onBack ? (
+          <button className="back-btn" onClick={onBack} aria-label="חזרה">
+            <Icon name="back" size={26} />
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="topbar-mid">{children}</div>
+        <StarCount stars={stars} bump={bump} />
+      </div>
+      {title && <h1 className="topbar-title">{title}</h1>}
     </header>
   )
 }
