@@ -23,7 +23,7 @@ export type Letter = {
 /** First set, in phonics teaching order (spec §2). `e` is included for E/G practice. */
 export const LETTERS: Letter[] = [
   { id: 's', upper: 'S', lower: 's', nameHe: 'אֵס', sound: '/s/', soundHe: 'סְ', ttsSound: 'sss', keyword: { word: 'sun', emoji: '☀️' } },
-  { id: 'a', upper: 'A', lower: 'a', nameHe: 'אֵיי', sound: '/a/', soundHe: 'אַ', ttsSound: 'ah', keyword: { word: 'apple', emoji: '🍎' } },
+  { id: 'a', upper: 'A', lower: 'a', nameHe: 'אֵיי', sound: '/a/', soundHe: 'אַ', ttsSound: 'ah', keyword: { word: 'apple', emoji: '🍎' }, audio: { sound: 'a.mp3' } },
   { id: 't', upper: 'T', lower: 't', nameHe: 'טִי', sound: '/t/', soundHe: 'טְ', ttsSound: 'tuh', keyword: { word: 'tiger', emoji: '🐯' } },
   { id: 'p', upper: 'P', lower: 'p', nameHe: 'פִּי', sound: '/p/', soundHe: 'פְּ', ttsSound: 'puh', keyword: { word: 'pig', emoji: '🐷' } },
   { id: 'i', upper: 'I', lower: 'i', nameHe: 'אַיי', sound: '/i/', soundHe: 'אִ', ttsSound: 'ih', keyword: { word: 'insect', emoji: '🐞' } },
