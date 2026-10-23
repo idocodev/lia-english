@@ -28,7 +28,7 @@ export const LETTERS: Letter[] = [
   { id: 'p', upper: 'P', lower: 'p', nameHe: 'פִּי', sound: '/p/', soundHe: 'פְּ', ttsSound: 'puh', keyword: { word: 'pig', emoji: '🐷' } },
   { id: 'i', upper: 'I', lower: 'i', nameHe: 'אַיי', sound: '/i/', soundHe: 'אִ', ttsSound: 'ih', keyword: { word: 'insect', emoji: '🐞' } },
   { id: 'n', upper: 'N', lower: 'n', nameHe: 'אֵן', sound: '/n/', soundHe: 'נְ', ttsSound: 'nnn', keyword: { word: 'nose', emoji: '👃' } },
-  { id: 'm', upper: 'M', lower: 'm', nameHe: 'אֵם', sound: '/m/', soundHe: 'מְ', ttsSound: 'mmm', keyword: { word: 'mouse', emoji: '🐭' } },
+  { id: 'm', upper: 'M', lower: 'm', nameHe: 'אֵם', sound: '/m/', soundHe: 'מְ', ttsSound: 'mmm', keyword: { word: 'mouse', emoji: '🐭' }, audio: { sound: 'm.mp3' } },
   { id: 'd', upper: 'D', lower: 'd', nameHe: 'דִּי', sound: '/d/', soundHe: 'דְּ', ttsSound: 'duh', keyword: { word: 'dog', emoji: '🐶' } },
   { id: 'g', upper: 'G', lower: 'g', nameHe: 'גִ׳י', sound: '/g/', soundHe: 'גְּ', ttsSound: 'guh', keyword: { word: 'goat', emoji: '🐐' } },
   { id: 'o', upper: 'O', lower: 'o', nameHe: 'אוֹ', sound: '/o/', soundHe: 'אָ', ttsSound: 'aw', keyword: { word: 'octopus', emoji: '🐙' } },
