@@ -1,14 +1,13 @@
-// Hooks the save up to the cloud copy when the build is configured (see sync.ts).
-// Without config this does nothing at all.
+// Hooks the logged-in child's save up to their cloud copy (see sync.ts).
+// Without config (a build with no backend) this does nothing at all.
 
-import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import { mergeRemote } from './journal'
 import type { Saved } from './local'
-import { readConfig, Syncer } from './sync'
+import { Syncer, type SyncConfig } from './sync'
 
-const config = readConfig()
-
-export function useCloudSave(data: Saved, setData: Dispatch<SetStateAction<Saved>>) {
+/** Returns flush(): resolves true once everything is in the cloud (for logout). */
+export function useCloudSave(config: SyncConfig | null, data: Saved, setData: Dispatch<SetStateAction<Saved>>) {
   const syncer = useRef<Syncer | null>(null)
   // The save as last handed to the syncer; until it is ready, the save at start.
   const tracked = useRef(data)
@@ -42,7 +41,7 @@ export function useCloudSave(data: Saved, setData: Dispatch<SetStateAction<Saved
       syncer.current = null
       cleanup()
     }
-  }, [setData])
+  }, [config, setData])
 
   useEffect(() => {
     const s = syncer.current
@@ -50,4 +49,9 @@ export function useCloudSave(data: Saved, setData: Dispatch<SetStateAction<Saved
     s.track(tracked.current, data)
     tracked.current = data
   }, [data])
+
+  return useCallback(async () => {
+    const s = syncer.current
+    return s ? s.flush() : !config
+  }, [config])
 }

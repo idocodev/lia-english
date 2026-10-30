@@ -1,18 +1,12 @@
-// Cloud save: sends the save's new events to Supabase and brings other devices' events back.
-// Only when the build has the three VITE_ values; without them nothing here runs and the
-// app is exactly the offline app. A failed send stays in the outbox and is retried later.
+// Cloud save: sends the save's new events to Supabase and brings other devices' events back,
+// under the logged-in child's player key (account.ts). Works offline: a failed send stays in
+// the outbox and is retried later.
 
+import type { Backend } from './account'
 import { addToOutbox, eventsBetween, removeFromOutbox, type SyncEvent } from './journal'
 import { freshSave, type Saved } from './local'
 
-export type SyncConfig = { url: string; anonKey: string; playerKey: string }
-
-export function readConfig(env: Record<string, string | undefined> = import.meta.env): SyncConfig | null {
-  const url = env.VITE_SUPABASE_URL?.trim()
-  const anonKey = env.VITE_SUPABASE_ANON_KEY?.trim()
-  const playerKey = env.VITE_PLAYER_KEY?.trim()
-  return url && anonKey && playerKey ? { url, anonKey, playerKey } : null
-}
+export type SyncConfig = Backend & { playerKey: string }
 
 export interface Remote {
   push(events: SyncEvent[]): Promise<void>
@@ -24,6 +18,12 @@ export type KeyValue = Pick<Storage, 'getItem' | 'setItem'>
 
 const OUTBOX = 'lia-english:outbox:v1'
 const SEEDED = 'lia-english:synced-save:v1'
+
+/** On logout: the next child on this device starts with an empty outbox and seeds their own save. */
+export function forgetSync(store: Pick<Storage, 'removeItem'> = localStorage) {
+  store.removeItem(OUTBOX)
+  store.removeItem(SEEDED)
+}
 const BATCH = 200
 const RETRY_MIN = 5_000
 const RETRY_MAX = 5 * 60_000

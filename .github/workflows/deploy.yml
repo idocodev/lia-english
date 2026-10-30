@@ -26,10 +26,9 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          # Cloud save (supabase/schema.sql). Optional: without them the app is offline-only, as before.
+          # Accounts + cloud save (supabase/schema.sql). Needed: without them nobody can log in.
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_PLAYER_KEY: ${{ secrets.VITE_PLAYER_KEY }}
       - name: Publish to gh-pages
         run: |
           cd dist

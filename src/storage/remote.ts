@@ -1,5 +1,5 @@
-// The Supabase side of the cloud save (supabase/schema.sql). Loaded on demand, only when the
-// build is configured, so the offline app never downloads supabase-js.
+// The Supabase side of the cloud save (supabase/schema.sql). Loaded on demand, after login, so the
+// login screen doesn't wait for supabase-js.
 
 import { createClient } from '@supabase/supabase-js'
 import type { SyncEvent } from './journal'
@@ -43,7 +43,6 @@ export function supabaseRemote(cfg: SyncConfig): Remote {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { 'x-player-key': cfg.playerKey } },
   })
-  let registered = false
   const check = <T extends { error: { message: string } | null }>(res: T) => {
     if (res.error) throw new Error(res.error.message)
     return res
@@ -51,10 +50,6 @@ export function supabaseRemote(cfg: SyncConfig): Remote {
 
   return {
     async push(events) {
-      if (!registered) {
-        check(await db.from('players').upsert({ player_key: cfg.playerKey }, { onConflict: 'player_key', ignoreDuplicates: true }))
-        registered = true
-      }
       check(
         await db
           .from('play_events')

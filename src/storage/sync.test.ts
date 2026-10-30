@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SyncEvent } from './journal'
 import { freshSave, type Saved } from './local'
-import { readConfig, Syncer, type KeyValue, type Remote } from './sync'
+import { forgetSync, Syncer, type KeyValue, type Remote } from './sync'
 
 class Memory implements KeyValue {
   data = new Map<string, string>()
@@ -101,14 +101,16 @@ describe('Syncer', () => {
   })
 })
 
-describe('readConfig', () => {
-  it('needs all three values', () => {
-    expect(readConfig({})).toBeNull()
-    expect(readConfig({ VITE_SUPABASE_URL: 'https://x.supabase.co', VITE_SUPABASE_ANON_KEY: 'k' })).toBeNull()
-    expect(readConfig({ VITE_SUPABASE_URL: 'https://x.supabase.co', VITE_SUPABASE_ANON_KEY: 'k', VITE_PLAYER_KEY: ' p ' })).toEqual({
-      url: 'https://x.supabase.co',
-      anonKey: 'k',
-      playerKey: 'p',
-    })
+describe('forgetSync', () => {
+  it('lets the next child on the device seed their own save', async () => {
+    const store = Object.assign(new Memory(), { removeItem(this: Memory, k: string) { this.data.delete(k) } })
+    const cloud = new FakeCloud()
+    cloud.online = false
+    const s = new Syncer(cloud, store, NOW)
+    s.seed(withSeen(freshSave(), 'g'))
+    expect(store.data.size).toBe(2)
+    forgetSync(store)
+    expect(store.data.size).toBe(0)
+    expect(new Syncer(cloud, store, NOW).pending).toEqual([])
   })
 })

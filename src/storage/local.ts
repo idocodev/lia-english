@@ -1,5 +1,6 @@
-// The device's own save (localStorage) is the source of truth and works offline.
-// When a backend is configured, sync.ts pushes what changes here to Supabase as events
+// The device's own save (localStorage) is the source of truth and works offline. It is the
+// logged-in child's (a save from before accounts goes to the first login), and logout clears it.
+// sync.ts pushes what changes here to Supabase as events
 // and merges events from other devices back in (journal.ts).
 
 import { emptyProgress, type Attempt, type Progress } from '../engine/engine'
@@ -38,6 +39,15 @@ export function load(): Saved {
     return { ...s, events: s.events.map((e) => (e.id ? e : { ...e, id: legacyId(e) })) }
   } catch {
     return freshSave()
+  }
+}
+
+/** On logout: the device's save belonged to that child. */
+export function clearSave() {
+  try {
+    localStorage.removeItem(KEY)
+  } catch {
+    // Blocked storage: nothing was kept anyway.
   }
 }
 

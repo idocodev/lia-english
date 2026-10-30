@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { load, save, type Saved } from './storage/local'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { clearSave, load, save, type Saved } from './storage/local'
 import { useCloudSave } from './storage/useCloudSave'
+import { forgetAccount, loadAccount, readBackend, saveAccount, type Account } from './storage/account'
+import { forgetSync } from './storage/sync'
+import { Login } from './screens/Login'
 import { Home } from './screens/Home'
 import { LetterList } from './screens/LetterList'
 import { LetterCard } from './screens/LetterCard'
@@ -32,16 +35,55 @@ export type Store = {
   data: Saved
   update: (fn: (s: Saved) => Saved) => void
   go: (to: string) => void
+  account: Account
+  logout: () => void
 }
 
+const backend = readBackend()
+
+// No account, no app: the login screen until a child logs in on this device.
 export function App() {
+  const [account, setAccount] = useState(() => loadAccount())
+  if (!account)
+    return (
+      <Login
+        backend={backend}
+        onLogin={(a) => {
+          saveAccount(a)
+          window.location.hash = '/'
+          setAccount(a)
+        }}
+      />
+    )
+  return (
+    <Game
+      key={account.playerKey}
+      account={account}
+      onLogout={() => {
+        forgetAccount()
+        forgetSync()
+        clearSave()
+        setAccount(null)
+      }}
+    />
+  )
+}
+
+function Game({ account, onLogout }: { account: Account; onLogout: () => void }) {
   const [route, go] = useRoute()
   const [data, setData] = useState<Saved>(load)
   const update = useCallback((fn: (s: Saved) => Saved) => setData((s) => fn(s)), [])
   useEffect(() => save(data), [data])
-  useCloudSave(data, setData)
+  const config = useMemo(() => (backend ? { ...backend, playerKey: account.playerKey } : null), [account.playerKey])
+  const flush = useCloudSave(config, data, setData)
 
-  const store: Store = { data, update, go }
+  const logout = useCallback(async () => {
+    const saved = await flush()
+    const ask = saved ? 'לצאת מהחשבון?' : 'חלק מההתקדמות עוד לא נשמר (אין אינטרנט). אם יוצאים עכשיו הוא יימחק מהמכשיר. לצאת בכל זאת?'
+    if (window.confirm(ask)) onLogout()
+  }, [flush, onLogout])
+
+  const store: Store = { data, update, go, account, logout: () => void logout() }
   const letterMatch = route.match(/^\/letter\/(\w)$/)
   const tabbed = ['/', '/letters', '/badges', '/collection'].includes(route)
 

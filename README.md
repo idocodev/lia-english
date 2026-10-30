@@ -47,19 +47,25 @@ src/
   storage/local.ts     localStorage save/load, attempt log (the offline source of truth)
   storage/journal.ts   the save as events: diff, merge from the cloud, outbox (pure, tested)
   storage/sync.ts      cloud save: outbox + retry, pull; storage/remote.ts = Supabase (lazy-loaded)
-supabase/schema.sql    cloud save tables + RLS (re-runnable; schema.test.ts runs it in PGlite)
-  screens/             Home, LetterList, LetterCard, SoundGame
+  storage/account.ts   login/register, the device's account
+supabase/schema.sql    accounts, cloud save tables + RLS (re-runnable; schema.test.ts runs it in PGlite)
+  screens/             Login, Home, LetterList, LetterCard, SoundGame
   components/          Mascot (SVG bunny), Sparkles, TopBar
 ```
 
-## Cloud save (optional)
+## Accounts and cloud save
 
-With these set in the repo's Actions settings, the build saves Lia's progress to Supabase as well:
-variable `VITE_SUPABASE_URL`, secrets `VITE_SUPABASE_ANON_KEY` (the publishable key) and `VITE_PLAYER_KEY`
-(a long random string; it is the only "password" to her data). Run `supabase/schema.sql` once in the project's
-SQL editor. The device keeps its save and works offline; new answers, opened cards and stickers queue in an
-outbox and go up when online, and a new device pulls and merges them (event ids make it idempotent).
-Without the values the app is offline-only, exactly as before.
+Nothing in the app shows without logging in. Each child has an account in Supabase (`supabase/schema.sql`):
+login names (e.g. `Lia` and `ליה`, case-insensitive) and a password the child picks the first time
+("פעם ראשונה כאן?", the `register` function, which only works for an account made for them that has no
+password yet). `login` answers the child's player key, which the device keeps (it stays logged in, offline
+too) and sends as `x-player-key`; row level security shows only that key's rows. Logout (bottom of Home)
+clears the device's save, so the next child starts with their own. Accounts are made by hand in the SQL
+editor ("Adding a child" at the end of `schema.sql`); a forgotten password = set `password_hash` to null.
+
+Actions settings: variable `VITE_SUPABASE_URL`, secret `VITE_SUPABASE_ANON_KEY` (the publishable key).
+The device keeps its save and works offline; new answers, opened cards and stickers queue in an outbox and
+go up when online, and a new device pulls and merges them (event ids make it idempotent).
 
 ## Recording your own voice
 

@@ -7,7 +7,7 @@ import { STICKERS } from '../content/stickers'
 import { levelOf, streakOf, xpOf } from '../engine/progress'
 
 export function Home({ store }: { store: Store }) {
-  const { data, go } = store
+  const { data, go, account } = store
   const now = new Date()
   const { level, into, need } = levelOf(xpOf(data))
   const streak = streakOf(data.events, now)
@@ -20,7 +20,7 @@ export function Home({ store }: { store: Store }) {
   return (
     <main className="screen home with-nav">
       <header className="home-top">
-        <h1>היי ליה!</h1>
+        <h1>היי {account.name}!</h1>
         <div className="home-chips">
           <div className={`chip chip-streak ${streak.current > 0 ? 'chip-lit' : ''}`} aria-label={`${streak.current} ימים ברצף`}>
             <FlameGlyph lit={streak.current > 0} />
@@ -121,6 +121,10 @@ export function Home({ store }: { store: Store }) {
           </button>
         </div>
       </section>
+
+      <button className="logout-btn" onClick={store.logout}>
+        יציאה מהחשבון
+      </button>
     </main>
   )
 }
