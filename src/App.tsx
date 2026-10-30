@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { clearSave, load, save, type Saved } from './storage/local'
 import { useCloudSave } from './storage/useCloudSave'
 import { forgetAccount, loadAccount, readBackend, saveAccount, type Account } from './storage/account'
@@ -13,7 +13,10 @@ import { Collection } from './screens/Collection'
 import { BottomNav } from './components/BottomNav'
 import { stop } from './audio/audio'
 
-// Tiny hash router: #/, #/letters, #/letter/g, #/game, #/badges, #/collection. Keeps the Android back button working.
+// The parent dashboard (#/admin), loaded only when opened.
+const AdminApp = lazy(() => import('./admin/Admin').then((m) => ({ default: m.AdminApp })))
+
+// Tiny hash router: #/, #/letters, #/letter/g, #/game, #/badges, #/collection, #/admin.... Keeps the Android back button working.
 function useRoute(): [string, (to: string) => void] {
   const read = () => window.location.hash.replace(/^#/, '') || '/'
   const [route, setRoute] = useState(read)
@@ -42,8 +45,16 @@ export type Store = {
 const backend = readBackend()
 
 // No account, no app: the login screen until a child logs in on this device.
+// #/admin is the parent dashboard, with its own login, whoever is logged in as a child.
 export function App() {
+  const [route] = useRoute()
   const [account, setAccount] = useState(() => loadAccount())
+  if (route.startsWith('/admin'))
+    return (
+      <Suspense fallback={null}>
+        <AdminApp backend={backend} route={route} />
+      </Suspense>
+    )
   if (!account)
     return (
       <Login

@@ -144,3 +144,72 @@ describe('schema.sql', () => {
     await db.query(`update players set player_key = $1 where player_key = $2`, [KEY, NEW])
   })
 })
+
+describe('parent dashboard (admin)', () => {
+  const ADMIN = 'admin-test-key-0123456789abcdef'
+  type AdminAnswer = { admin_key?: string; name?: string; needs_password?: boolean } | null
+  const adminCall = (fn: 'admin_login' | 'admin_register', name: string | null, password: string | null) =>
+    asAnon<{ r: AdminAnswer }>(null, `select public.${fn}($1, $2) as r`, [name, password]).then((rows) => rows[0].r)
+  type Kid = { id: string; name: string; display_name: string; login_names: string[]; has_password: boolean; events: { id: string; kind: string; letter: string | null; correct: boolean | null }[] }
+  const children = (key: string | null, header: string | null = null) =>
+    asAnon<{ r: Kid[] }>(header, `select public.admin_children($1) as r`, [key]).then((rows) => rows[0].r)
+
+  beforeAll(async () => {
+    await db.exec(`delete from login_failures`)
+    await db.query(`insert into admins (admin_key, name, display_name) values ($1, 'Ido', 'עידו')`, [ADMIN])
+    await db.query(`insert into admin_names (name_lc, admin_key) values ('ido', $1), ('עידו', $1)`, [ADMIN])
+    await db.exec(schema) // still re-runnable with admins in it
+  })
+
+  it('refuses everything before the admin has a password, and children can\'t use admin names', async () => {
+    await expect(children(ADMIN)).rejects.toThrow(/not_admin/)
+    expect(await adminCall('admin_login', 'Ido', 'x')).toEqual({ needs_password: true })
+    expect(await adminCall('admin_register', 'lia', 'abcdef')).toBeNull() // a child's name is not an admin's
+    expect(await login('ido', 'abcdef')).toBeNull() // and an admin's is not a child's
+    await expect(adminCall('admin_register', 'ido', 'abc12')).rejects.toThrow(/weak_password/)
+  })
+
+  it('lets the admin pick a password once, then log in by any of their names', async () => {
+    expect(await adminCall('admin_register', ' עידו ', 'parent-pw')).toEqual({ admin_key: ADMIN, name: 'עידו' })
+    await expect(adminCall('admin_register', 'ido', 'taken-over')).rejects.toThrow(/already_registered/)
+    expect(await adminCall('admin_login', 'IDO', 'parent-pw')).toEqual({ admin_key: ADMIN, name: 'עידו' })
+    expect(await adminCall('admin_login', 'ido', 'wrong-pw')).toBeNull()
+  })
+
+  it('shows every child with their events to the admin key only', async () => {
+    const kids = await children(ADMIN)
+    expect(kids.map((k) => k.display_name)).toEqual(['ליה', 'נועם'])
+    expect(kids[0].login_names).toEqual(['lia', 'ליה'])
+    expect(kids[0].has_password).toBe(true)
+    expect(kids[0].events.map((e) => e.id)).toEqual(['a1', 'a2'])
+    expect(JSON.stringify(kids)).not.toContain(KEY) // never a child's key, nor a hash
+    expect(JSON.stringify(kids)).not.toContain('$2')
+  })
+
+  it('gives children, strangers and no key nothing', async () => {
+    for (const k of [null, '', KEY, OTHER, 'admin-test-key-0123456789abcdeX'])
+      await expect(children(k, KEY)).rejects.toThrow(/not_admin/)
+    await expect(asAnon(KEY, `select public.admin_reset_password($1, gen_random_uuid())`, [KEY])).rejects.toThrow(/not_admin/)
+    await expect(asAnon(KEY, `select public.admin_add_child($1, 'x', array['x'])`, [KEY])).rejects.toThrow(/not_admin/)
+    await expect(asAnon(KEY, `select public.admin_check($1)`, [ADMIN])).rejects.toThrow(/permission denied/)
+    for (const t of ['admins', 'admin_names']) await expect(asAnon(KEY, `select * from ${t}`)).rejects.toThrow(/permission denied/)
+  })
+
+  it('adds a child who then picks a password, and resets a forgotten one', async () => {
+    const add = (show: string, names: string[]) =>
+      asAnon<{ r: { id: string } }>(null, `select public.admin_add_child($1, $2, $3) as r`, [ADMIN, show, names]).then((r) => r[0].r)
+    await expect(add('ליה 2', ['LIA'])).rejects.toThrow(/name_taken/)
+    await expect(add(' ', ['x'])).rejects.toThrow(/bad_name/)
+    await expect(add('יואב', [' ', ''])).rejects.toThrow(/bad_name/)
+    const { id } = await add('יואב', ['Yoav', ' יואב ', 'yoav'])
+    const yoav = (await children(ADMIN)).find((k) => k.id === id)!
+    expect(yoav).toMatchObject({ display_name: 'יואב', login_names: ['yoav', 'יואב'], has_password: false, events: [] })
+    expect(await login('yoav', 'x')).toEqual({ needs_password: true })
+    expect(await register('יואב', 'yoav1')).toMatchObject({ name: 'יואב' })
+
+    const reset = (child: string) => asAnon<{ r: boolean }>(null, `select public.admin_reset_password($1, $2) as r`, [ADMIN, child]).then((r) => r[0].r)
+    expect(await reset(id)).toBe(true)
+    expect(await login('yoav', 'yoav1')).toEqual({ needs_password: true })
+    expect(await reset('00000000-0000-0000-0000-000000000000')).toBe(false)
+  })
+})

@@ -120,6 +120,9 @@ export function Login({ backend, onLogin }: { backend: Backend | null; onLogin: 
           {mode === 'login' ? 'פעם ראשונה כאן? בוחרים סיסמה' : 'כבר יש לי סיסמה'}
         </button>
       </form>
+      <a className="parents-link" href="#/admin">
+        כניסת הורים
+      </a>
     </main>
   )
 }

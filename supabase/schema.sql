@@ -7,7 +7,8 @@
 -- answers the child's player_key: a long random string the device keeps and sends as the
 -- x-player-key header on every request. Row level security only shows and accepts rows of
 -- that key, so the public (publishable) key alone reads nothing, and the app can't be used
--- without logging in. Accounts are made by hand (see "Adding a child" at the end).
+-- without logging in. Accounts are made in the parent dashboard (#/admin) or by hand (see
+-- "Adding a child" at the end).
 --
 -- The device keeps its own save (localStorage) and is the offline source of truth; it pushes
 -- an append-only log of events here and merges it back on another device. Everything in the
@@ -221,7 +222,178 @@ group by player_key, round_id;
 
 grant select on public.letter_stats, public.rounds to anon, authenticated;
 
+-- Parent dashboard (admins) -------------------------------------------------
+-- Grown-ups who see every child's data (the #/admin screen). Separate from the children:
+-- their own accounts, names and keys, and children can never reach any of this. Same pattern
+-- as the children: made by the owner with no password, the admin picks it the first time
+-- (admin_register), then admin_login answers an admin_key the dashboard sends to the admin_*
+-- functions. Every admin_* function checks the key first; there are no table grants at all.
+
+-- A stable id per child for the dashboard, so it never handles a child's player_key.
+alter table public.players add column if not exists id uuid not null default gen_random_uuid();
+create unique index if not exists players_id_key on public.players (id);
+
+create table if not exists public.admins (
+  admin_key      text primary key check (length(admin_key) >= 20),
+  name           text not null,
+  display_name   text,
+  password_hash  text,
+  created_at     timestamptz not null default now()
+);
+
+create table if not exists public.admin_names (
+  name_lc    text primary key check (name_lc = lower(btrim(name_lc)) and length(name_lc) between 1 and 40),
+  admin_key  text not null references public.admins (admin_key) on update cascade on delete cascade
+);
+
+alter table public.admins enable row level security;
+alter table public.admin_names enable row level security;
+revoke all on public.admins, public.admin_names from anon, authenticated;
+
+-- {admin_key, name} for a right name and password, null otherwise, {needs_password: true}
+-- for an admin with no password yet. Failures count with the children's ('admin:' + name).
+create or replace function public.admin_login(p_name text, p_password text)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_name text := left(lower(btrim(coalesce(p_name, ''))), 40);
+  v_tag  text := 'admin:' || left(lower(btrim(coalesce(p_name, ''))), 40);
+  v_key  text;
+  v_show text;
+  v_hash text;
+begin
+  perform public.login_check_attempts(v_tag);
+
+  select a.admin_key, coalesce(a.display_name, a.name), a.password_hash into v_key, v_show, v_hash
+  from public.admin_names n join public.admins a on a.admin_key = n.admin_key
+  where n.name_lc = v_name;
+
+  if v_key is not null and v_hash is null then
+    return json_build_object('needs_password', true);
+  end if;
+  if v_hash = extensions.crypt(coalesce(p_password, ''), v_hash) then
+    delete from public.login_failures f where f.name_lc = v_tag;
+    return json_build_object('admin_key', v_key, 'name', v_show);
+  end if;
+
+  perform public.login_failed(v_tag);
+  return null;
+end $$;
+
+-- First time: sets the password of an existing admin with none (at least 6 characters).
+create or replace function public.admin_register(p_name text, p_password text)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_name text := left(lower(btrim(coalesce(p_name, ''))), 40);
+  v_tag  text := 'admin:' || left(lower(btrim(coalesce(p_name, ''))), 40);
+  v_key  text;
+  v_show text;
+  v_hash text;
+begin
+  perform public.login_check_attempts(v_tag);
+  if length(coalesce(p_password, '')) < 6 or length(p_password) > 100 then
+    raise exception 'weak_password';
+  end if;
+
+  select a.admin_key, coalesce(a.display_name, a.name), a.password_hash into v_key, v_show, v_hash
+  from public.admin_names n join public.admins a on a.admin_key = n.admin_key
+  where n.name_lc = v_name
+  for update of a;
+
+  if v_key is null then
+    perform public.login_failed(v_tag);
+    return null;
+  end if;
+  if v_hash is not null then
+    raise exception 'already_registered';
+  end if;
+
+  update public.admins a set password_hash = extensions.crypt(p_password, extensions.gen_salt('bf'))
+  where a.admin_key = v_key;
+  return json_build_object('admin_key', v_key, 'name', v_show);
+end $$;
+
+-- Raises 'not_admin' unless the key is a registered admin's.
+create or replace function public.admin_check(p_admin_key text)
+returns void language plpgsql stable security definer set search_path = '' as $$
+begin
+  if p_admin_key is null or not exists (
+    select 1 from public.admins a where a.admin_key = p_admin_key and a.password_hash is not null
+  ) then
+    raise exception 'not_admin';
+  end if;
+end $$;
+
+-- Every child with their whole event log; the dashboard works out the rest (the same way the game does).
+create or replace function public.admin_children(p_admin_key text)
+returns json language plpgsql stable security definer set search_path = '' as $$
+begin
+  perform public.admin_check(p_admin_key);
+  return coalesce((
+    select json_agg(json_build_object(
+      'id', p.id,
+      'name', p.name,
+      'display_name', coalesce(p.display_name, p.name),
+      'login_names', coalesce((select json_agg(n.name_lc order by n.name_lc) from public.player_names n where n.player_key = p.player_key), '[]'::json),
+      'has_password', p.password_hash is not null,
+      'created_at', p.created_at,
+      'events', coalesce((
+        select json_agg(json_build_object(
+          'id', e.id, 'kind', e.kind, 'at', e.at, 'letter', e.letter, 'chosen', e.chosen,
+          'correct', e.correct, 'round_id', e.round_id, 'sticker', e.sticker
+        ) order by e.at, e.id)
+        from public.play_events e where e.player_key = p.player_key
+      ), '[]'::json)
+    ) order by p.created_at, p.name)
+    from public.players p
+  ), '[]'::json);
+end $$;
+
+-- Forgotten password: clears it, and the child picks a new one in the app (do it when they're about to).
+create or replace function public.admin_reset_password(p_admin_key text, p_child uuid)
+returns boolean language plpgsql volatile security definer set search_path = '' as $$
+begin
+  perform public.admin_check(p_admin_key);
+  update public.players p set password_hash = null where p.id = p_child;
+  return found;
+end $$;
+
+-- A new child account with no password: {id}. p_names are the login names (at least one);
+-- raises 'bad_name' or 'name_taken'.
+create or replace function public.admin_add_child(p_admin_key text, p_display_name text, p_names text[])
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_show  text := btrim(coalesce(p_display_name, ''));
+  v_names text[];
+  v_key   text := encode(extensions.gen_random_bytes(24), 'hex');
+  v_id    uuid;
+begin
+  perform public.admin_check(p_admin_key);
+  select coalesce(array_agg(distinct x), '{}') into v_names
+  from (select lower(btrim(n)) as x from unnest(coalesce(p_names, '{}'::text[])) n) t where x <> '';
+  if length(v_show) not between 1 and 40 or cardinality(v_names) = 0
+     or exists (select 1 from unnest(v_names) x where length(x) > 40) then
+    raise exception 'bad_name';
+  end if;
+  if exists (select 1 from public.player_names n where n.name_lc = any (v_names)) then
+    raise exception 'name_taken';
+  end if;
+  insert into public.players (player_key, name, display_name) values (v_key, v_show, v_show) returning id into v_id;
+  insert into public.player_names (name_lc, player_key) select x, v_key from unnest(v_names) x;
+  return json_build_object('id', v_id);
+end $$;
+
+revoke all on function public.admin_check(text) from public, anon, authenticated;
+revoke all on function public.admin_login(text, text), public.admin_register(text, text), public.admin_children(text),
+  public.admin_reset_password(text, uuid), public.admin_add_child(text, text, text[]) from public;
+grant execute on function public.admin_login(text, text), public.admin_register(text, text), public.admin_children(text),
+  public.admin_reset_password(text, uuid), public.admin_add_child(text, text, text[]) to anon, authenticated;
+
+-- Adding an admin (owner, SQL editor); they pick the password at #/admin the first time:
+--   insert into public.admins (admin_key, name, display_name) values ('<openssl rand -hex 24>', 'Ido', 'עידו');
+--   insert into public.admin_names (name_lc, admin_key) values ('ido', '<key>'), ('עידו', '<key>');
+
 -- Adding a child -----------------------------------------------------------
+-- Easiest from the parent dashboard (#/admin: "ילד/ה חדש/ה", and "איפוס סיסמה"). By hand:
 -- Run as the project owner (SQL editor). Make the key with `openssl rand -hex 24`. With no
 -- password, the child picks one in the app the first time ("first time here?").
 --
