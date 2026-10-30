@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { load, save, type Saved } from './storage/local'
+import { useCloudSave } from './storage/useCloudSave'
 import { Home } from './screens/Home'
 import { LetterList } from './screens/LetterList'
 import { LetterCard } from './screens/LetterCard'
@@ -38,6 +39,7 @@ export function App() {
   const [data, setData] = useState<Saved>(load)
   const update = useCallback((fn: (s: Saved) => Saved) => setData((s) => fn(s)), [])
   useEffect(() => save(data), [data])
+  useCloudSave(data, setData)
 
   const store: Store = { data, update, go }
   const letterMatch = route.match(/^\/letter\/(\w)$/)

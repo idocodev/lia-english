@@ -44,10 +44,22 @@ src/
   content/stickers.ts  sticker set
   engine/engine.ts     adaptive engine: Leitner boxes, weighted picks, distractors, rounds (pure, tested)
   audio/audio.ts       the audio seam: recorded files first, Web Speech API fallback
-  storage/local.ts     localStorage save/load, attempt log
+  storage/local.ts     localStorage save/load, attempt log (the offline source of truth)
+  storage/journal.ts   the save as events: diff, merge from the cloud, outbox (pure, tested)
+  storage/sync.ts      cloud save: outbox + retry, pull; storage/remote.ts = Supabase (lazy-loaded)
+supabase/schema.sql    cloud save tables + RLS (re-runnable; schema.test.ts runs it in PGlite)
   screens/             Home, LetterList, LetterCard, SoundGame
   components/          Mascot (SVG bunny), Sparkles, TopBar
 ```
+
+## Cloud save (optional)
+
+With these set in the repo's Actions settings, the build saves Lia's progress to Supabase as well:
+variable `VITE_SUPABASE_URL`, secrets `VITE_SUPABASE_ANON_KEY` (the publishable key) and `VITE_PLAYER_KEY`
+(a long random string; it is the only "password" to her data). Run `supabase/schema.sql` once in the project's
+SQL editor. The device keeps its save and works offline; new answers, opened cards and stickers queue in an
+outbox and go up when online, and a new device pulls and merges them (event ids make it idempotent).
+Without the values the app is offline-only, exactly as before.
 
 ## Recording your own voice
 
@@ -67,5 +79,5 @@ Recorded files always win; letters without recordings keep using speech.
 - **Daily session flow**: review → new letter (only when earlier ones are in box 3+) → game → tracing → words → reward.
 - **Spaced repetition across days** (box intervals 1-2-4-7-14 days) on top of the in-round repetition.
 - **Recorded audio** (Ido's voice) and Hebrew spoken instructions.
-- **Ido's dashboard**: letter map, confusions, streak; then remote sync (e.g. Supabase) of the attempt log.
+- **Ido's dashboard**: letter map, confusions, streak; on top of the cloud save's events (`letter_stats`, `rounds` views).
 - Remaining letters (u r h b f l j v w x y z q), custom illustrations, sticker album, parent settings.

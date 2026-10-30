@@ -8,6 +8,7 @@ import { CONFUSION_PAIRS, LETTERS, LETTER_BY_ID, SAME_SOUND, type LetterId } fro
 import { nextSticker } from '../content/stickers'
 import { Round, type Question } from '../engine/engine'
 import { levelOf, xpOf, XP_PER_STAR, XP_PER_STICKER } from '../engine/progress'
+import { newId } from '../storage/local'
 import { chime, playContrast, playSound, sayHebrew, stop } from '../audio/audio'
 
 const ROUND_LENGTH = 10
@@ -52,6 +53,7 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
   const praiseIn = useRef(praiseGap())
   const praiseNext = useRef(Math.floor(Math.random() * SPOKEN_PRAISE.length))
   const missedLast = useRef(false)
+  const [roundId] = useState(newId)
 
   const target = LETTER_BY_ID[q.target as LetterId]
 
@@ -93,7 +95,7 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
         ...s,
         progress,
         stars: s.stars + (ok ? 1 : 0),
-        events: [...s.events, { game: 'sound', target: q.target, chosen: id, correct: ok, at: new Date().toISOString() }],
+        events: [...s.events, { id: newId(), round: roundId, game: 'sound', target: q.target, chosen: id, correct: ok, at: new Date().toISOString() }],
       }))
       setResults((r) => [...r, ok])
       if (ok) setRoundStars((n) => n + 1)
