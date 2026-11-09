@@ -4,7 +4,7 @@ import { Mascot } from '../components/Mascot'
 import { Sparkles } from '../components/Sparkles'
 import { TopBar } from '../components/TopBar'
 import { FlameGlyph, Icon, StarGlyph } from '../components/Icon'
-import { CONFUSION_PAIRS, LETTERS, LETTER_BY_ID, SAME_SOUND, type LetterId } from '../content/letters'
+import { CONFUSION_PAIRS, LETTER_BY_ID, SAME_SOUND, gamePool, type LetterId } from '../content/letters'
 import { nextSticker } from '../content/stickers'
 import { Round, type Question } from '../engine/engine'
 import { levelOf, xpOf, XP_PER_STAR, XP_PER_STICKER } from '../engine/progress'
@@ -31,7 +31,7 @@ function Game({ store, onAgain }: { store: Store; onAgain: () => void }) {
   if (!roundRef.current) {
     roundRef.current = new Round(
       data.progress,
-      LETTERS.map((l) => l.id),
+      gamePool(data.seenLetters),
       { confusionPairs: CONFUSION_PAIRS, sameSound: SAME_SOUND },
       Math.random,
       ROUND_LENGTH,

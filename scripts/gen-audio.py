@@ -56,12 +56,31 @@ SOUNDS = {
     "o": ("vowel", [("ˈɑːktəpəs", 0.7), ("ˈɒt", 0.7)], (750, 1150, 1050, 1650)),
     "k": ("stop", [("kˈæt", 0.9), ("kˈʌ", 0.9)]),
     "e": ("vowel", [("ˈɛlɪfənt", 0.7), ("ˈɛt", 0.9)], (650, 1000, 1900, 2500)),
+    # Second set (h r u l f b j z w v y x q). New kinds:
+    # lead (pre, post): the run-up to the word's main vowel: voice bar, burst or hiss, plus `post` frames of vowel;
+    # onset (n): the first n frames of a glide, into its vowel ("wuh", "yuh");
+    # steady (F1/F2 window, min frames): a held liquid, looped to ~0.35 s like a hiss;
+    # concat: other letters' cuts in a row (x = k + s, q = k + w).
+    "h": ("stop", [("hˈʌ", 0.9), ("hˈæt", 0.9)]),
+    "r": ("steady", [("ɹˈɑbɑt", 0.7), ("ɹˈʌn", 0.8)], (220, 420, 900, 1250, 5)),
+    "u": ("vowel", [("ˈʌp", 0.9), ("ˈʌmbɹɛlə", 0.8)], (780, 1060, 1430, 1760)),
+    "l": ("steady", [("lˈʌv", 0.9), ("lˈɛɡ", 0.9)], (300, 480, 1000, 1350, 6)),
+    "f": ("fric", [("ˈɪf", 0.9), ("ˈɔf", 0.9)]),
+    "b": ("lead", [("bˈʌs", 0.9), ("bˈæt", 0.9)], (3, 3)),
+    "j": ("lead", [("dʒˈʌ", 0.9), ("dʒˈæm", 0.9)], (2, 3)),
+    "z": ("lead", [("zˈibɹə", 0.9), ("zˈɪp", 0.9)], (6, 0)),
+    "w": ("onset", [("wˈʌ", 0.9), ("wˈɛt", 0.9)], 12),
+    "v": ("lead", [("vɑlkˈeɪnoʊ", 0.9), ("vˈæn", 0.9)], (5, 0)),
+    "y": ("onset", [("jˈʌ", 0.9), ("jˈɛs", 0.9)], 14),
+    "x": ("concat", ["k", "s"]),
+    "q": ("concat", ["k", "w"]),
 }
 # Letter sounds judged clean enough to ship (by duration, voicing and formants of the cut,
 # reviewed on the --preview spectrograms): no added vowel on t/p/k, a short voice bar on d/g.
-# i and e drift between vowels in Kokoro, so they stay on Web Speech. A recording in
+# i and e drift between vowels in Kokoro, so they stay on Web Speech. The second set is interim
+# (z, v, l, r and w are the roughest: Kokoro won't hold a voiced consonant on its own). A recording in
 # public/audio/<id>.mp3 (RECORDED in audio.ts) overrides any of these.
-SOUND_OK = set("satpnmdgock")
+SOUND_OK = set("satpnmdgock") | set("hrulfbjzwvyxq")
 # Letters that share a sound file.
 SAME_SOUND = {"c": "k"}
 
@@ -134,6 +153,16 @@ def fade(x, sr, a=0.01, b=0.02):
     return x
 
 
+def loop_to(seg, sr, secs=0.35, xf_s=0.03):
+    """Stretch a steady segment by overlapping copies of itself (a hiss, a held liquid)."""
+    target, xf = int(sr * secs), min(int(sr * xf_s), len(seg) // 3)
+    out = seg.copy()
+    while len(out) < target:
+        ramp = np.linspace(0, 1, xf)
+        out = np.concatenate([out[:-xf], out[-xf:] * (1 - ramp) + seg[:xf] * ramp, seg[xf:]])
+    return fade(out[:target], sr, 0.03, 0.06)
+
+
 def cut_sound(x, sr, kind, win=None):
     """Return the clean segment for one letter sound, or None if there isn't one."""
     F = frames(x, sr)
@@ -144,14 +173,8 @@ def cut_sound(x, sr, kind, win=None):
         if not rs:
             return None
         a, b = max(rs, key=lambda r: r[1] - r[0])
-        seg = ms(a, b)
         # A hiss loops seamlessly: stretch it to ~0.35 s with overlapping copies.
-        target, xf = int(sr * 0.35), int(sr * 0.03)
-        out = seg.copy()
-        while len(out) < target:
-            ramp = np.linspace(0, 1, xf)
-            out = np.concatenate([out[:-xf], out[-xf:] * (1 - ramp) + seg[:xf] * ramp, seg[xf:]])
-        return fade(out[:target], sr, 0.03, 0.06)
+        return loop_to(ms(a, b), sr)
     if kind in ("stop", "vstop"):
         if not voiced_runs:
             return None
@@ -180,6 +203,32 @@ def cut_sound(x, sr, kind, win=None):
             return None
         a, b = max(rs, key=lambda r: r[1] - r[0])
         return fade(ms(a, min(b, a + 35)), sr, 0.02, 0.06)
+    if kind == "lead":
+        pre, post = win
+        # The first vowel: the first voiced run long enough not to be a voice bar. No bridging,
+        # since a voice bar and its vowel are split by a single burst frame.
+        vr = [r for r in runs([f["voiced"] and f["rms"] > 0.03 for f in F], 0) if r[1] - r[0] >= 9]
+        if not vr:
+            return None
+        v = vr[0][0]
+        b = v
+        while b > 0 and not F[b - 1]["voiced"] and F[b - 1]["rms"] > 0.012:
+            b -= 1
+        if not 1 <= v - b <= 15:
+            return None
+        return fade(ms(max(b - pre, 0), v + post), sr, 0.008, 0.025)
+    if kind == "onset":
+        if not voiced_runs:
+            return None
+        a = voiced_runs[0][0]
+        return fade(ms(a, a + win), sr, 0.01, 0.04)
+    if kind == "steady":
+        lo1, hi1, lo2, hi2, n = win
+        rs = [r for r in runs([f["voiced"] and lo1 <= f["f1"] <= hi1 and lo2 <= f["f2"] <= hi2 for f in F], 1) if r[1] - r[0] >= n]
+        if not rs:
+            return None
+        a, b = max(rs, key=lambda r: r[1] - r[0])
+        return loop_to(ms(a, b), sr, 0.3, 0.015)
     raise ValueError(kind)
 
 
@@ -257,6 +306,7 @@ def main():
     for text in EXTRA:
         say(text, f"{slug(text)}.mp3")
 
+    cuts = {}
     prev = Path("/tmp/lia-sounds")
     if preview:
         prev.mkdir(exist_ok=True)
@@ -266,11 +316,20 @@ def main():
             continue
         kind, cands, *win = SOUNDS[sid]
         seg = None
-        for ph, sp in cands:
+        if kind == "concat":
+            parts = [cuts.get(c) for c in cands]
+            if all(p is not None for p in parts):
+                # A short gap-free join; a hiss is shortened so "ks" stays one sound.
+                parts = [p[: int(sr * 0.18)] if SOUNDS[c][0] == "fric" else p for p, c in zip(parts, cands)]
+                seg = fade(np.concatenate(parts), sr, 0.003, 0.04)
+            ph = "+".join(cands)
+        for ph, sp in cands if kind != "concat" else []:
             x, sr = k.create(ph, voice=VOICE, speed=sp, is_phonemes=True)
             seg = cut_sound(x, sr, kind, win[0] if win else None)
             if seg is not None:
                 break
+        if seg is not None:
+            cuts[sid] = seg
         status = "no clean cut" if seg is None else f"{len(seg) / sr * 1000:.0f} ms from {ph!r}"
         ok = seg is not None and sid in SOUND_OK
         print(f"sound {l['id']}: {status}{'' if ok else '  (not shipped: Web Speech)'}")

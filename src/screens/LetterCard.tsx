@@ -25,6 +25,9 @@ export function LetterCard({ store, id }: { store: Store; id: string }) {
   }, [letter])
 
   if (!letter) return null
+  // The letter is bold where it is in the word: first in most, last in "fox".
+  const word = letter.keyword.word
+  const at = Math.max(0, word.indexOf(letter.lower))
   const prev = LETTERS[idx - 1]
   const next = LETTERS[idx + 1]
 
@@ -72,8 +75,9 @@ export function LetterCard({ store, id }: { store: Store; id: string }) {
                 {letter.keyword.emoji}
               </span>
               <span className="keyword-word">
-                <b>{letter.keyword.word[0]}</b>
-                {letter.keyword.word.slice(1)}
+                {word.slice(0, at)}
+                <b>{word.slice(at, at + 1)}</b>
+                {word.slice(at + 1)}
               </span>
             </button>
 
