@@ -1,7 +1,7 @@
 import type { LetterId } from './letters'
 
 export type Word = {
-  /** The word, lower case: also its id, its letters and its clip ("word-<id>.mp3"). */
+  /** The word, lower case: also its id, its letters and its clip (public/audio/words/<id>.mp3 if recorded, else Kokoro's en/word-<id>.mp3). */
   id: string
   /** The OpenMoji picture (hexcode); bundled as public/pictures/<id>.svg by scripts/get-pictures.mjs. */
   openmoji: string

@@ -1,7 +1,7 @@
 // Minimal offline support: network-first for pages, cache-first for assets.
 // The voice clips (audio/manifest.json, from scripts/gen-audio.py) and the word pictures
 // (pictures/manifest.json, from scripts/get-pictures.mjs) are precached so they work offline.
-const CACHE = 'lia-english-v10'
+const CACHE = 'lia-english-v11'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

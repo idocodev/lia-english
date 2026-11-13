@@ -8,6 +8,8 @@ public/audio/en/, plus two manifests:
 
 Recorded clips (Ido's, e.g. ElevenLabs) go in with the same trim and loudness:
   python scripts/gen-audio.py --clip in.mp3 public/audio/he/kol-hakavod.mp3
+A recorded word in public/audio/words/<word>.mp3 is used for that word, and never regenerated:
+  python scripts/gen-audio.py --clip cat.wav public/audio/words/cat.mp3 && python scripts/gen-audio.py --words
 
 Run it after adding letters or words (not run in CI), then bump CACHE in public/sw.js
 so installed copies fetch the new files:
@@ -29,6 +31,7 @@ import imageio_ffmpeg
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public/audio/en"
+RECORDED_WORDS = ROOT / "public/audio/words"
 CLIPS_JSON = ROOT / "src/audio/clips.gen.json"
 MODELS = Path(os.environ.get("KOKORO_MODELS", "/workspace/agent/.cache/kokoro-models"))
 VOICE, SPEED, SR_OUT = "af_heart", 0.9, 24000
@@ -311,7 +314,8 @@ def main():
         name = NAME_IPA.get(l["upper"]) or k.tokenizer.phonemize(l["upper"], "en-us")
         say(f"{l['upper']} says", f"says-{l['id']}.mp3", f"{name} sˈɛz")
         say(f"like {l['word']}", f"like-{slug(l['word'])}.mp3")
-        say(l["word"], f"word-{slug(l['word'])}.mp3")
+        if not recorded_word(l["word"], clips):
+            say(l["word"], f"word-{slug(l['word'])}.mp3")
     for text in EXTRA:
         say(text, f"{slug(text)}.mp3")
     for w in words():
@@ -366,7 +370,17 @@ def main():
     write_manifest()
 
 
+def recorded_word(w, clips):
+    """Map a word to its recording (public/audio/words/<word>.mp3), if there is one."""
+    f = RECORDED_WORDS / f"{slug(w)}.mp3"
+    if f.exists():
+        clips[w] = f"audio/words/{f.name}"
+    return f.exists()
+
+
 def say_word(k, w, clips):
+    if recorded_word(w, clips):
+        return
     text, speed = WORD_TAKES.get(w, (w, SPEED))
     x, sr = k.create(text, voice=VOICE, speed=speed, lang="en-us")
     write_mp3(normalize(fade(trim(x, sr), sr, 0.005, 0.02)), sr, OUT / f"word-{slug(w)}.mp3")
@@ -375,9 +389,11 @@ def say_word(k, w, clips):
 
 
 def add_words(k):
-    """Clips for words in words.ts that have none yet; every other clip stays as it is."""
+    """Clips for words in words.ts that have none yet, and recorded words; every other clip stays as it is."""
     clips = json.loads(CLIPS_JSON.read_text())
-    for w in words():
+    for w in words() + [l["word"] for l in letters()]:
+        if recorded_word(w, clips):
+            continue
         if w not in clips:
             say_word(k, w, clips)
     CLIPS_JSON.write_text(json.dumps(clips, indent=1, ensure_ascii=False) + "\n")

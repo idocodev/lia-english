@@ -1,6 +1,7 @@
 // Audio seam: every sound in the app goes through this module.
 // Order of preference: a recorded file (public/audio/...), then a pre-generated Kokoro clip
 // (public/audio/en/, voice af_heart, made by scripts/gen-audio.py), then the browser's speech engine.
+// Words are Ido's ElevenLabs recordings (public/audio/words/), listed in clips.gen.json like the Kokoro clips.
 // To use recordings, add files and set `audio` on a letter in content/letters.ts,
 // or drop files named by convention (see recordedUrl) and list them in RECORDED.
 
