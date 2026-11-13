@@ -9,7 +9,7 @@ export type ProgressInput = {
   stickers: string[]
   seenLetters: string[]
   progress: Progress
-  events: { at: string }[]
+  events: { at: string; game?: string; correct?: boolean }[]
 }
 
 export const XP_PER_STAR = 10
@@ -82,6 +82,7 @@ export function badgesOf(d: ProgressInput, totalLetters: number, now: Date): Bad
     { id: 'eg-master', icon: '🎯', name: 'אלופת E/G', how: 'לזהות נכון את E ואת G כמה פעמים', earned: box('e') >= 3 && box('g') >= 3 },
     { id: 'stars-50', icon: '⭐', name: '50 כוכבים', how: 'לאסוף 50 כוכבים', earned: d.stars >= 50 },
     { id: 'streak-3', icon: '🔥', name: '3 ימים ברצף', how: 'לשחק 3 ימים ברצף', earned: streak.best >= 3 },
+    { id: 'word-builder', icon: '🧱', name: 'בונת מילים', how: 'לבנות 10 מילים בלי טעות', earned: d.events.filter((e) => e.game === 'word-build' && e.correct).length >= 10 },
     { id: 'collector', icon: '💎', name: 'אספנית', how: 'לאסוף 5 פריטים', earned: d.stickers.length >= 5 },
   ]
 }

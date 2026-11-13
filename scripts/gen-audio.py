@@ -12,6 +12,7 @@ Recorded clips (Ido's, e.g. ElevenLabs) go in with the same trim and loudness:
 Run it after adding letters or words (not run in CI), then bump CACHE in public/sw.js
 so installed copies fetch the new files:
   python scripts/gen-audio.py            # phrases, words and letter sounds
+  python scripts/gen-audio.py --words    # only the missing word clips (src/content/words.ts), keeps the rest
   python scripts/gen-audio.py --preview  # also writes WAVs + spectrograms of the letter sounds to /tmp/lia-sounds
 
 Needs: pip install kokoro-onnx soundfile imageio-ffmpeg, and the model files
@@ -35,6 +36,9 @@ FF = imageio_ffmpeg.get_ffmpeg_exe()
 
 # Extra phrases the app speaks besides the per-letter ones.
 EXTRA = ["This is", "and this is"]
+
+# Words that come out clearer said with some emphasis (checked by transcribing the clips): text, speed.
+WORD_TAKES = {"cup": ("cup!", 0.85), "tub": ("tub!", 0.85)}
 
 # Letter names the phonemizer gets wrong in "<X> says" ("A" comes out as the article).
 NAME_IPA = {"A": "ˈeɪ", "I": "ˈaɪ"}
@@ -91,6 +95,9 @@ def letters():
     return [{"id": i, "upper": u, "word": w} for i, u, w in rows]
 
 
+def words():
+    src = (ROOT / "src/content/words.ts").read_text()
+    return re.findall(r"\{ id: '([a-z]+)', openmoji:", src)
 def slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
@@ -285,6 +292,8 @@ def main():
     preview = "--preview" in sys.argv
     k = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
     OUT.mkdir(parents=True, exist_ok=True)
+    if "--words" in sys.argv:
+        return add_words(k)
     for old in OUT.glob("*.mp3"):
         old.unlink()
     clips = {}
@@ -305,6 +314,9 @@ def main():
         say(l["word"], f"word-{slug(l['word'])}.mp3")
     for text in EXTRA:
         say(text, f"{slug(text)}.mp3")
+    for w in words():
+        if w not in clips:
+            say_word(k, w, clips)
 
     cuts = {}
     prev = Path("/tmp/lia-sounds")
@@ -351,6 +363,24 @@ def main():
 
     CLIPS_JSON.write_text(json.dumps(clips, indent=1, ensure_ascii=False) + "\n")
     print(f"{len(clips)} clips")
+    write_manifest()
+
+
+def say_word(k, w, clips):
+    text, speed = WORD_TAKES.get(w, (w, SPEED))
+    x, sr = k.create(text, voice=VOICE, speed=speed, lang="en-us")
+    write_mp3(normalize(fade(trim(x, sr), sr, 0.005, 0.02)), sr, OUT / f"word-{slug(w)}.mp3")
+    clips[w] = f"audio/en/word-{slug(w)}.mp3"
+    print(f"word {w}: {len(trim(x, sr)) / sr:.2f} s")
+
+
+def add_words(k):
+    """Clips for words in words.ts that have none yet; every other clip stays as it is."""
+    clips = json.loads(CLIPS_JSON.read_text())
+    for w in words():
+        if w not in clips:
+            say_word(k, w, clips)
+    CLIPS_JSON.write_text(json.dumps(clips, indent=1, ensure_ascii=False) + "\n")
     write_manifest()
 
 

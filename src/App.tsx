@@ -8,6 +8,9 @@ import { Home } from './screens/Home'
 import { LetterList } from './screens/LetterList'
 import { LetterCard } from './screens/LetterCard'
 import { SoundGame } from './screens/SoundGame'
+import { WordPick } from './screens/WordPick'
+import { WordBuild } from './screens/WordBuild'
+import { Play } from './screens/Play'
 import { Badges } from './screens/Badges'
 import { Collection } from './screens/Collection'
 import { BottomNav } from './components/BottomNav'
@@ -16,7 +19,7 @@ import { stop } from './audio/audio'
 // The parent dashboard (#/admin), loaded only when opened.
 const AdminApp = lazy(() => import('./admin/Admin').then((m) => ({ default: m.AdminApp })))
 
-// Tiny hash router: #/, #/letters, #/letter/g, #/game, #/badges, #/collection, #/admin.... Keeps the Android back button working.
+// Tiny hash router: #/, #/letters, #/letter/g, #/play, #/game, #/words/pick, #/words/build, #/badges, #/collection, #/admin.... Keeps the Android back button working.
 function useRoute(): [string, (to: string) => void] {
   const read = () => window.location.hash.replace(/^#/, '') || '/'
   const [route, setRoute] = useState(read)
@@ -96,7 +99,7 @@ function Game({ account, onLogout }: { account: Account; onLogout: () => void })
 
   const store: Store = { data, update, go, account, logout: () => void logout() }
   const letterMatch = route.match(/^\/letter\/(\w)$/)
-  const tabbed = ['/', '/letters', '/badges', '/collection'].includes(route)
+  const tabbed = ['/', '/letters', '/play', '/badges', '/collection'].includes(route)
 
   // Status bar matches the screen: white on home, purple under the inner headers.
   useEffect(() => {
@@ -111,6 +114,12 @@ function Game({ account, onLogout }: { account: Account; onLogout: () => void })
         <LetterCard store={store} id={letterMatch[1]} key={letterMatch[1]} />
       ) : route === '/game' ? (
         <SoundGame store={store} />
+      ) : route === '/play' ? (
+        <Play store={store} />
+      ) : route === '/words/pick' ? (
+        <WordPick store={store} />
+      ) : route === '/words/build' ? (
+        <WordBuild store={store} />
       ) : route === '/badges' ? (
         <Badges store={store} />
       ) : route === '/collection' ? (

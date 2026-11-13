@@ -117,6 +117,8 @@ export class Round {
     private rules: DistractorRules,
     private rng: Rng = Math.random,
     length = 10,
+    /** The answer options for a target, when not letters (the word games bring their own). */
+    private makeOptions?: (target: string, progress: Progress, rng: Rng) => string[],
   ) {
     this.length = length
   }
@@ -138,6 +140,7 @@ export class Round {
       target = weightedPick(choices, (id) => weightOf(this.progress, id), this.rng)
     }
     this.last = target
+    if (this.makeOptions) return { target, options: this.makeOptions(target, this.progress, this.rng) }
     // Start with 2 options; 3 once the letter is getting stable.
     const optionCount = itemOf(this.progress, target).box >= 2 ? 3 : 2
     const distractors = pickDistractors(this.progress, target, this.pool, optionCount - 1, this.rules, this.rng)

@@ -128,7 +128,7 @@ function speak(text: string, rate = 0.8): Promise<void> {
 }
 
 /** English text: its pre-generated clip when there is one, else the speech engine. */
-async function sayEnglish(text: string, rate = 0.8): Promise<void> {
+export async function sayEnglish(text: string, rate = 0.8): Promise<void> {
   const url = clipUrl(text)
   if (url && (await playFile(url))) return
   return speak(text, rate)
@@ -154,6 +154,22 @@ export async function playPhrase(letter: Letter) {
 
 export async function playWord(word: string) {
   return sayEnglish(word)
+}
+
+/**
+ * Sounds out a word slowly, letter by letter, then says it whole: "c - a - t ... cat".
+ * `onFocus` gets the index of the letter being sounded, `-1` for the whole word, `null` at the end.
+ */
+export async function playBlend(word: string, letters: Letter[], onFocus: (i: number | null) => void) {
+  for (let i = 0; i < letters.length; i++) {
+    onFocus(i)
+    await Promise.all([playSound(letters[i]), pause(650)])
+    await pause(120)
+  }
+  onFocus(-1)
+  await pause(250)
+  await Promise.all([playWord(word), pause(700)])
+  onFocus(null)
 }
 
 /** Ido's recorded Hebrew feedback, in public/audio/he/<id>.mp3. */

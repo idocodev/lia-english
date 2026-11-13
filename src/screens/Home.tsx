@@ -5,6 +5,8 @@ import { StarCount } from '../components/TopBar'
 import { LETTERS } from '../content/letters'
 import { STICKERS } from '../content/stickers'
 import { levelOf, streakOf, xpOf } from '../engine/progress'
+import { GameRow } from './Play'
+import { PictureCredit } from './Credits'
 
 export function Home({ store }: { store: Store }) {
   const { data, go, account } = store
@@ -107,8 +109,10 @@ export function Home({ store }: { store: Store }) {
               <bdi dir="ltr">125 XP</bdi>
             </span>
           </button>
-          <button className="row-card tone-lavender" onClick={() => go('/collection')}>
-            <span className="num-circle c-purple">3</span>
+          <GameRow tone="blue" circle="blue" n={3} title="שמע ובחר" sub="שומעים מילה ובוחרים תמונה" count="8 מילים" picture="cat" onClick={() => go('/words/pick')} />
+          <GameRow tone="lavender" circle="purple" n={4} title="בנה את המילה" sub="שומעים מילה ובונים אותה" count="6 מילים" picture="sun" onClick={() => go('/words/build')} />
+          <button className="row-card tone-peach" onClick={() => go('/collection')}>
+            <span className="num-circle c-orange">5</span>
             <span className="row-main">
               <span className="row-title">האוסף שלי</span>
               <span className="bar">
@@ -125,6 +129,7 @@ export function Home({ store }: { store: Store }) {
       <button className="logout-btn" onClick={store.logout}>
         יציאה מהחשבון
       </button>
+      <PictureCredit />
     </main>
   )
 }

@@ -19,7 +19,7 @@ export function Collection({ store }: { store: Store }) {
             </span>
           ))}
         </div>
-        <button className="btn btn-primary btn-wide" onClick={() => go('/game')}>
+        <button className="btn btn-primary btn-wide" onClick={() => go('/play')}>
           לאתגר הבא
         </button>
       </div>

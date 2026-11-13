@@ -5,10 +5,10 @@
 // answers carry their own id, a sticker or an opened letter card is keyed by what it is.
 
 import { emptyProgress, recordAttempt } from '../engine/engine'
-import { MAX_EVENTS, type GameEvent, type Saved } from './local'
+import { MAX_EVENTS, type GameEvent, type GameId, type Saved } from './local'
 
 export type SyncEvent =
-  | { kind: 'answer'; id: string; at: string; game: 'sound'; letter: string; chosen: string; correct: boolean; round?: string }
+  | { kind: 'answer'; id: string; at: string; game: GameId; letter: string; chosen: string; correct: boolean; round?: string }
   | { kind: 'letter_seen'; id: string; at: string; letter: string }
   | { kind: 'sticker'; id: string; at: string; sticker: string }
 

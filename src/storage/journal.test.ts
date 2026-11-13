@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { emptyProgress, recordAttempt } from '../engine/engine'
 import { addToOutbox, eventsBetween, mergeRemote, removeFromOutbox, type SyncEvent } from './journal'
-import { freshSave, legacyId, type GameEvent, type Saved } from './local'
+import { freshSave, gameOf, legacyId, roundIdFor, type GameEvent, type Saved } from './local'
 
 const NOW = '2026-10-30T10:00:00.000Z'
 const answer = (id: string, at: string, target: string, chosen = target, round = 'r1'): GameEvent => ({
@@ -99,5 +99,26 @@ describe('outbox', () => {
     expect(box.map((x) => x.id)).toEqual(['1', '2', '3'])
     expect(addToOutbox(box, [e('1')])).toBe(box)
     expect(removeFromOutbox(box, [e('1'), e('3')]).map((x) => x.id)).toEqual(['2'])
+  })
+})
+
+describe('word game answers', () => {
+  it('round-trip through the cloud with their game, the word in letter and chosen', () => {
+    const round = roundIdFor('word-build')
+    const e: GameEvent = { id: 'w1', round, game: 'word-build', target: 'cat', chosen: 'cot', correct: false, at: '2026-11-13T10:00:00.000Z' }
+    const next = { ...freshSave(), events: [e], progress: recordAttempt(emptyProgress(), e) }
+    const [sent] = eventsBetween(freshSave(), next, e.at)
+    expect(sent).toMatchObject({ kind: 'answer', game: 'word-build', letter: 'cat', chosen: 'cot', correct: false })
+    const merged = mergeRemote(freshSave(), [sent])
+    expect(merged.events[0]).toMatchObject({ game: 'word-build', target: 'cat', chosen: 'cot' })
+    expect(merged.progress.confusions['cat>cot']).toBe(1)
+  })
+
+  it('know their game from the column, else from the round id (the dashboard sees only that)', () => {
+    expect(gameOf('word-pick', null)).toBe('word-pick')
+    expect(gameOf(null, roundIdFor('word-build'))).toBe('word-build')
+    expect(gameOf(null, 'a1b2c3')).toBe('sound')
+    expect(gameOf(null, null)).toBe('sound')
+    expect(gameOf('chess', null)).toBe('sound')
   })
 })

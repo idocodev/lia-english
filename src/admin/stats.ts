@@ -6,13 +6,13 @@ import { LETTERS } from '../content/letters'
 import { badgesOf, dayKey, levelOf, streakOf, xpOf, type Badge, type LevelInfo, type Streak } from '../engine/progress'
 import type { SyncEvent } from '../storage/journal'
 import { mergeRemote } from '../storage/journal'
-import { freshSave, type Saved } from '../storage/local'
+import { freshSave, gameOf, type Saved } from '../storage/local'
 import type { AdminEvent, ChildRecord } from './api'
 
 export function toSyncEvent(r: AdminEvent): SyncEvent | null {
   const at = new Date(r.at).toISOString()
   if (r.kind === 'answer' && r.letter && r.chosen && r.correct !== null)
-    return { kind: 'answer', id: r.id, at, game: 'sound', letter: r.letter, chosen: r.chosen, correct: r.correct, ...(r.round_id ? { round: r.round_id } : {}) }
+    return { kind: 'answer', id: r.id, at, game: gameOf(null, r.round_id), letter: r.letter, chosen: r.chosen, correct: r.correct, ...(r.round_id ? { round: r.round_id } : {}) }
   if (r.kind === 'letter_seen' && r.letter) return { kind: 'letter_seen', id: r.id, at, letter: r.letter }
   if (r.kind === 'sticker' && r.sticker) return { kind: 'sticker', id: r.id, at, sticker: r.sticker }
   return null

@@ -14,8 +14,25 @@ export type Saved = {
   events: GameEvent[]
 }
 
-/** A first-try answer in a game. `id` is unique per answer (synced as is); `round` groups a round's answers. */
-export type GameEvent = Attempt & { game: 'sound'; id: string; round?: string }
+export const GAMES = ['sound', 'word-pick', 'word-build'] as const
+export type GameId = (typeof GAMES)[number]
+
+/**
+ * A first-try answer in a game. `id` is unique per answer (synced as is); `round` groups a round's answers.
+ * In the word games, target and chosen are words (in the cloud: letter = the word, chosen = the picked
+ * word, or the word as her first wrong tile spelled it), and the round id starts with the game id.
+ */
+export type GameEvent = Attempt & { game: GameId; id: string; round?: string }
+
+/** A round id for a word game says which game it was, for readers that only see the round (the dashboard). */
+export const roundIdFor = (game: GameId) => (game === 'sound' ? newId() : `${game}:${newId()}`)
+
+/** Which game an answer from the cloud came from: its own column, else its round id, else the sound game. */
+export function gameOf(game: string | null | undefined, round?: string | null): GameId {
+  if (GAMES.includes(game as GameId)) return game as GameId
+  const prefix = round?.split(':')[0]
+  return GAMES.includes(prefix as GameId) ? (prefix as GameId) : 'sound'
+}
 
 const KEY = 'lia-english:v1'
 export const MAX_EVENTS = 3000

@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { SyncEvent } from './journal'
 import type { Remote, SyncConfig } from './sync'
+import { gameOf } from './local'
 
 type Row = {
   player_key: string
@@ -30,7 +31,7 @@ export function fromRow(r: Row): SyncEvent | null {
   // Postgres hands back its own timestamp format; the save uses ISO strings.
   const at = new Date(r.at).toISOString()
   if (r.kind === 'answer' && r.letter && r.chosen && r.correct !== null)
-    return { kind: 'answer', id: r.id, at, game: 'sound', letter: r.letter, chosen: r.chosen, correct: r.correct, ...(r.round_id ? { round: r.round_id } : {}) }
+    return { kind: 'answer', id: r.id, at, game: gameOf(r.game, r.round_id), letter: r.letter, chosen: r.chosen, correct: r.correct, ...(r.round_id ? { round: r.round_id } : {}) }
   if (r.kind === 'letter_seen' && r.letter) return { kind: 'letter_seen', id: r.id, at, letter: r.letter }
   if (r.kind === 'sticker' && r.sticker) return { kind: 'sticker', id: r.id, at, sticker: r.sticker }
   return null

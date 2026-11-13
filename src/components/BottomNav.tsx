@@ -18,7 +18,7 @@ export function BottomNav({ route, go }: { route: string; go: (to: string) => vo
   return (
     <nav className="bottom-nav" aria-label="ניווט">
       {TABS.slice(0, 2).map(tab)}
-      <button className="tab-play" onClick={() => go('/game')} aria-label="אתגר הצלילים">
+      <button className={`tab-play ${route === '/play' ? 'tab-play-on' : ''}`} onClick={() => go('/play')} aria-label="משחקים">
         <Icon name="play" size={30} />
       </button>
       {TABS.slice(2).map(tab)}
