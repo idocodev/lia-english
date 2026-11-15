@@ -1,5 +1,6 @@
 [
  "audio/a.mp3",
+ "audio/e.mp3",
  "audio/en/and-this-is.mp3",
  "audio/en/like-apple.mp3",
  "audio/en/like-bus.mp3",
@@ -104,7 +105,11 @@
  "audio/he/new-sticker.mp3",
  "audio/he/which-sound.mp3",
  "audio/he/wow.mp3",
+ "audio/i.mp3",
+ "audio/l.mp3",
  "audio/m.mp3",
+ "audio/r.mp3",
+ "audio/w.mp3",
  "audio/words/ant.mp3",
  "audio/words/bag.mp3",
  "audio/words/bat.mp3",
@@ -133,5 +138,6 @@
  "audio/words/sun.mp3",
  "audio/words/tub.mp3",
  "audio/words/van.mp3",
- "audio/words/web.mp3"
+ "audio/words/web.mp3",
+ "audio/y.mp3"
 ]
